@@ -3,13 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Menu, Upload, Save, ArrowLeft, FileText, 
   Square, Palette, Layers3, Droplets, AlignCenter, Layout, 
-  Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck, Printer, AlertTriangle, BookOpen, FileDigit, Loader2
+  Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck, Printer, AlertTriangle, BookOpen, FileDigit,
+  Maximize, MoveHorizontal, MoveVertical, Loader2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Importaciones para Storage
-import imageCompression from 'browser-image-compression'; // Importación del compresor mágico
-import { db, storage } from '../../firebase/config'; // Asegúrate de exportar 'storage' desde tu config
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import imageCompression from 'browser-image-compression';
+import { db, storage } from '../../firebase/config'; 
 import PageRenderer from './PageRenderer';
 import PrintEngine from './PrintEngine';
 
@@ -40,7 +41,7 @@ export default function EditorLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('pages');
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false); // Nuevo estado para compresión
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   
   const [editorViewMode, setEditorViewMode] = useState('spread');
 
@@ -101,7 +102,7 @@ export default function EditorLayout() {
   };
 
   const handleAddPage = (tipo) => {
-    const newPage = { id: Date.now().toString(), tipo: tipo, config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm' } };
+    const newPage = { id: Date.now().toString(), tipo: tipo, config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm' } };
     setPages([...pages, newPage]);
     setCurrentPageIndex(pages.length); 
     setActiveTab(tipo === 'blanco' || tipo === 'foto' ? 'design' : 'content'); 
@@ -116,7 +117,7 @@ export default function EditorLayout() {
       const newPagesFromExcel = data.map((row, index) => ({
         id: `excel-${Date.now()}-${index}`, tipo: 'ave',
         config: {
-          backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm',
+          backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm',
           nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '',
           nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
           orden: row['Orden'] || '', familia: row['Familia'] || '', iucn: row['Estado de conservación (IUCN)'] || '', nom059: row['Estado de conservación (NOM 059)'] || '',
@@ -147,39 +148,24 @@ export default function EditorLayout() {
       setTimeout(() => { window.print(); }, 500);
   };
 
-  // ==========================================================
-  // COMPRESOR Y SUBIDA DE IMÁGENES A FIREBASE
-  // ==========================================================
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setIsUploadingImage(true);
     try {
-        // 1. Opciones de Compresión Profesional (Calidad Imprenta a 300 DPI)
-        const options = {
-            maxSizeMB: 2.5, // Jamás pasará de 2.5 MB (Ideal para que Firebase sea eterno)
-            maxWidthOrHeight: 2700, // Dimensión máxima en píxeles (Perfecto para 6x9 pulgadas)
-            useWebWorker: true,
-        };
-        
-        // El navegador comprime mágicamente tu foto pesada de 30MB aquí
+        const options = { maxSizeMB: 2.5, maxWidthOrHeight: 2700, useWebWorker: true };
         const compressedFile = await imageCompression(file, options);
-
-        // 2. Subir a Firebase Storage
         const storageRef = ref(storage, `libros/${bookId}/${Date.now()}_${compressedFile.name}`);
         await uploadBytes(storageRef, compressedFile);
-
-        // 3. Obtener Link Público de Firebase y guardarlo en la página
         const downloadURL = await getDownloadURL(storageRef);
         updateCurrentPageConfig('imageSrc', downloadURL);
-
     } catch (error) {
         console.error("Error al procesar/subir imagen:", error);
         alert("Ocurrió un error al procesar tu foto. Revisa la consola.");
     } finally {
         setIsUploadingImage(false);
-        e.target.value = null; // Limpiamos para poder subir otra
+        e.target.value = null;
     }
   };
 
@@ -357,31 +343,48 @@ export default function EditorLayout() {
 
                     {(currentPage.tipo === 'ave' || currentPage.tipo === 'foto') && (
                       <ControlPanel title="Fotografía Original">
-                          {/* NUEVO BOTÓN DE SUBIDA CON COMPRESIÓN */}
                           <label className={`flex items-center justify-center w-full gap-2 p-2 rounded text-sm text-white cursor-pointer transition ${isUploadingImage ? 'bg-gray-600 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} mb-3 shadow`}>
                               {isUploadingImage ? (
-                                  <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Comprimiendo y Subiendo...</span>
+                                  <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</span>
                               ) : (
                                   <><Upload className="w-4 h-4" /> Subir desde mi PC</>
                               )}
-                              <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  className="hidden" 
-                                  onChange={handleImageUpload} 
-                                  disabled={isUploadingImage} 
-                              />
+                              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploadingImage} />
                           </label>
 
                           <div className="flex items-center gap-2 mb-3 bg-gray-800 p-2 rounded border border-gray-700">
                               <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                               <input type="text" placeholder="O pega el link aquí..." value={currentPage.config.imageSrc || ''} onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)} className="bg-transparent text-sm text-gray-400 w-full focus:outline-none" />
                           </div>
-                          
-                          <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase">Opacidad de la Imagen</label>
-                          <div className="flex items-center gap-2 bg-gray-800 p-2 rounded border border-gray-700">
-                              <Droplets className="w-4 h-4 text-gray-500" />
-                              <input type="range" min="0" max="1" step="0.05" value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1} onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+
+                          {/* NUEVO PANEL: AJUSTE DE IMAGEN (FIT Y POSICIÓN) */}
+                          <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase mt-4">Encuadre de Imagen</label>
+                          <div className="grid grid-cols-1 gap-4 bg-gray-800 p-3 rounded border border-gray-700 mb-3">
+                              
+                              <div>
+                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1">Modo de Ajuste</span></label>
+                                  <div className="flex bg-gray-900 rounded p-1 gap-1">
+                                      <button onClick={() => updateCurrentPageConfig('imageFit', 'cover')} className={`flex-1 text-[10px] py-1 rounded ${currentPage.config.imageFit !== 'contain' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Llenar</button>
+                                      <button onClick={() => updateCurrentPageConfig('imageFit', 'contain')} className={`flex-1 text-[10px] py-1 rounded ${currentPage.config.imageFit === 'contain' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Ajustar Completa</button>
+                                  </div>
+                              </div>
+
+                              <div>
+                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Maximize className="w-3 h-3"/> Zoom (Escala)</span><span>{currentPage.config.imageScale || 1}x</span></label>
+                                  <input type="range" min="0.5" max="3" step="0.05" value={currentPage.config.imageScale || 1} onChange={(e) => updateCurrentPageConfig('imageScale', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                              </div>
+                              <div>
+                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><MoveHorizontal className="w-3 h-3"/> Eje X (Horizontal)</span><span>{currentPage.config.imageOffsetX || 0}%</span></label>
+                                  <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetX || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetX', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                              </div>
+                              <div>
+                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><MoveVertical className="w-3 h-3"/> Eje Y (Vertical)</span><span>{currentPage.config.imageOffsetY || 0}%</span></label>
+                                  <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetY || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetY', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                              </div>
+                              <div>
+                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Droplets className="w-3 h-3"/> Opacidad</span><span>{currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1}</span></label>
+                                  <input type="range" min="0" max="1" step="0.05" value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1} onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                              </div>
                           </div>
                       </ControlPanel>
                     )}
@@ -431,7 +434,6 @@ export default function EditorLayout() {
           </button>
         </div>
 
-        {/* ÁREA DE TRABAJO CENTRAL (PANTALLA) */}
         <div className="flex-1 flex flex-col relative overflow-auto bg-gray-300 z-0 items-center">
             
             <div className="flex items-center gap-2 mt-6 print:hidden bg-white p-1 rounded-lg shadow-sm z-10">
@@ -446,7 +448,6 @@ export default function EditorLayout() {
             </div>
         </div>
 
-        {/* MENÚ LATERAL DERECHO (ÍNDICE DE PÁGINAS) */}
         <div className="w-64 bg-white border-l border-gray-300 flex flex-col shadow-2xl z-10 shrink-0">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                 <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2"><FileCheck className="w-4 h-4 text-emerald-600" />Índice</h3>

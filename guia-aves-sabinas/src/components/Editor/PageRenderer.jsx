@@ -8,7 +8,6 @@ const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock }) => {
   if (!value) return null;
 
   return (
-    // Usamos 'em' para que el texto escale perfectamente en base al tamaño de letra elegido
     <div className={`flex items-start gap-3 leading-relaxed ${isBlock ? 'flex-col gap-1.5' : ''}`} style={{ fontSize: '0.95em' }}>
       {!isBlock ? (
         <>
@@ -86,16 +85,30 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const bgColor = config.backgroundColor || '#ffffff';
   const textColor = config.textColor || '#1f2937'; 
   const themeColor = config.themeColor || '#3b82f6'; 
-  const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
   const showCircle = config.showCornerCircle !== false; 
   const titlePosition = config.titlePosition || 'data'; 
   const titleBgColor = config.titleBgColor || '#000000';
   const titleBgOpacity = config.titleBgOpacity !== undefined ? config.titleBgOpacity : 0.6;
   
-  // NUEVAS VARIABLES DE DISEÑO EDITORIAL
+  // DISEÑO EDITORIAL
   const fontFamily = config.fontFamily || 'system-ui, sans-serif';
   const baseFontSize = config.fontSize || '11pt';
   const marginSize = config.marginSize || '15mm';
+
+  // AJUSTES DE IMAGEN (Zoom, Paneo y Fit)
+  const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
+  const imgScale = config.imageScale || 1;
+  const imgOffsetX = config.imageOffsetX || 0;
+  const imgOffsetY = config.imageOffsetY || 0;
+  const imgFit = config.imageFit || 'cover'; // NUEVO: cover vs contain
+
+  const imageStyles = {
+    opacity: imgOpacity,
+    transform: `scale(${imgScale}) translate(${imgOffsetX}%, ${imgOffsetY}%)`,
+    transformOrigin: 'center center',
+    transition: 'transform 0.1s ease-out',
+    objectFit: imgFit // Aplicamos la regla dinámica
+  };
 
   const { showBleed = false, showMargins = false, splitPages = false, cropMarks = false, slugInfo = false } = printSettings;
 
@@ -153,7 +166,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
 
           {pageData.tipo === 'foto' && (
               config.imageSrc ? (
-                  <img src={config.imageSrc} alt="Foto" className="w-full h-full object-cover" style={{ opacity: imgOpacity }} />
+                  <img src={config.imageSrc} alt="Foto" className="w-full h-full" style={imageStyles} />
               ) : (
                   <div className="w-full h-full flex items-center justify-center opacity-30"><ImageIcon className="w-16 h-16" /></div>
               )
@@ -182,7 +195,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                 </div>
              )}
              {config.imageSrc ? (
-                <img src={config.imageSrc} alt="Ave" className="absolute inset-0 w-full h-full object-cover z-0" style={{ opacity: imgOpacity }} />
+                <img src={config.imageSrc} alt="Ave" className="absolute inset-0 w-full h-full z-0" style={imageStyles} />
              ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 text-center z-0" style={{ padding: marginSize }}><ImageIcon className="w-16 h-16 mb-4" /><p className="text-sm">Falta imagen</p></div>
              )}
