@@ -104,7 +104,7 @@ export default function EditorLayout() {
         const newPage = {
             id: Date.now().toString(),
             tipo: tipo,
-            config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true }
+            config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6 }
         };
         setPages([...pages, newPage]);
         setCurrentPageIndex(pages.length);
@@ -127,7 +127,7 @@ export default function EditorLayout() {
                 id: `excel-${Date.now()}-${index}`,
                 tipo: 'ave',
                 config: {
-                    backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true,
+                    backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6,
                     nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '',
                     nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
                     orden: row['Orden'] || '',
@@ -325,6 +325,31 @@ export default function EditorLayout() {
                             </div>
 
                             {currentPage.tipo === 'ave' && (
+                                <ControlPanel title="Posición del Título">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={() => updateCurrentPageConfig('titlePosition', 'data')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.titlePosition !== 'image' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>En Datos</button>
+                                        <button onClick={() => updateCurrentPageConfig('titlePosition', 'image')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.titlePosition === 'image' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>En Foto</button>
+                                    </div>
+
+                                    {/* Aparece el slider solo si el título está en la foto */}
+                                    {currentPage.config.titlePosition === 'image' && (
+                                        <div className="mt-4">
+                                            <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase">Transparencia del fondo</label>
+                                            <div className="flex items-center gap-2 bg-gray-800 p-2 rounded border border-gray-700">
+                                                <Droplets className="w-4 h-4 text-gray-500" />
+                                                <input
+                                                    type="range" min="0" max="1" step="0.05"
+                                                    value={currentPage.config.titleBgOpacity !== undefined ? currentPage.config.titleBgOpacity : 0.6}
+                                                    onChange={(e) => updateCurrentPageConfig('titleBgOpacity', parseFloat(e.target.value))}
+                                                    className="w-full h-1 accent-emerald-500 cursor-pointer"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </ControlPanel>
+                            )}
+
+                            {currentPage.tipo === 'ave' && (
                                 <ControlPanel title="Estructura y Decoración">
                                     <div className="grid grid-cols-2 gap-2 mb-3">
                                         <button onClick={() => updateCurrentPageConfig('imagePosition', 'left')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.imagePosition !== 'right' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Foto Izquierda</button>
@@ -343,7 +368,6 @@ export default function EditorLayout() {
                                 </ControlPanel>
                             )}
 
-                            {/* NUEVO: Control de Formato Individual por Campo */}
                             {currentPage.tipo === 'ave' && (
                                 <ControlPanel title="Formato de Campos (Sangría vs Bloque)">
                                     <p className="text-[10px] text-gray-500 mb-3 -mt-2">Elige si el texto va junto al icono o debajo de él.</p>
@@ -389,9 +413,9 @@ export default function EditorLayout() {
                                         />
                                     </div>
 
-                                    <label className="text-sm text-gray-400 block mb-1">Opacidad (Transparencia)</label>
-                                    <div className="flex items-center gap-2">
-                                        <Droplets className="w-4 h-4 text-gray-600" />
+                                    <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase">Opacidad de la Imagen</label>
+                                    <div className="flex items-center gap-2 bg-gray-800 p-2 rounded border border-gray-700">
+                                        <Droplets className="w-4 h-4 text-gray-500" />
                                         <input
                                             type="range" min="0" max="1" step="0.05"
                                             value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1}
@@ -402,7 +426,7 @@ export default function EditorLayout() {
                                 </ControlPanel>
                             )}
 
-                            <ControlPanel title="Colores">
+                            <ControlPanel title="Colores Generales">
                                 <div className="flex items-center justify-between gap-2">
                                     <label className="text-sm text-gray-400">Fondo</label>
                                     <input type="color" value={currentPage.config.backgroundColor || '#ffffff'} onChange={(e) => updateCurrentPageConfig('backgroundColor', e.target.value)} className="w-10 h-8 border-0 cursor-pointer bg-transparent" />
@@ -446,7 +470,7 @@ export default function EditorLayout() {
                 </div>
             </div>
 
-            {/* NUEVO: MENÚ LATERAL DERECHO (ÍNDICE DE PÁGINAS) */}
+            {/* MENÚ LATERAL DERECHO (ÍNDICE DE PÁGINAS) */}
             <div className="w-64 bg-white border-l border-gray-300 flex flex-col shadow-2xl print:hidden z-10 shrink-0">
                 <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                     <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2">
@@ -458,7 +482,6 @@ export default function EditorLayout() {
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 bg-gray-100">
                     {pages.map((p, idx) => {
-                        // Definimos un nombre amigable para la lista dependiendo del tipo de página
                         let pageName = p.tipo;
                         if (p.tipo === 'ave') pageName = p.config.nombreComun || 'Ave sin nombre';
                         if (p.tipo === 'portada') pageName = p.config.titulo || 'Portada';
