@@ -3,11 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Menu, Upload, Save, ArrowLeft, FileText,
     Square, Palette, Layers3, Droplets, AlignCenter, Layout,
-    Trash2, FileEdit, Book, Image as ImageIcon
+    Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase/config'; // Asegúrate de que esta ruta a tu config.js sea correcta
+import { db } from '../../firebase/config';
 import PageRenderer from './PageRenderer';
 
 // ==========================================
@@ -51,11 +51,12 @@ export default function EditorLayout() {
 
     // Estados de interfaz
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [activeTab, setActiveTab] = useState('pages'); // 'pages', 'content', 'design'
+    const [activeTab, setActiveTab] = useState('pages');
     const [isSaving, setIsSaving] = useState(false);
 
     // Estado Global del Libro
     const [bookTitle, setBookTitle] = useState("Cargando...");
+    const [bookSize, setBookSize] = useState("standard"); // NUEVO: Estado para el tamaño
     const [pages, setPages] = useState([]);
     const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
@@ -70,6 +71,7 @@ export default function EditorLayout() {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     setBookTitle(data.titulo || "Sin título");
+                    setBookSize(data.bookSize || "standard"); // Carga el tamaño guardado
                     setPages(data.paginas || []);
                 } else {
                     alert("No se encontró este libro en la base de datos.");
@@ -113,7 +115,7 @@ export default function EditorLayout() {
         const newPage = {
             id: Date.now().toString(),
             tipo: tipo,
-            config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1 }
+            config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true }
         };
         setPages([...pages, newPage]);
         setCurrentPageIndex(pages.length);
@@ -136,7 +138,7 @@ export default function EditorLayout() {
                 id: `excel-${Date.now()}-${index}`,
                 tipo: 'ave',
                 config: {
-                    backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1,
+                    backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true,
                     nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '',
                     nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
                     orden: row['Orden'] || '',
@@ -156,7 +158,7 @@ export default function EditorLayout() {
             alert(`¡Se importaron ${newPagesFromExcel.length} aves correctamente!`);
         };
         reader.readAsBinaryString(file);
-        e.target.value = null; // Reset input
+        e.target.value = null;
     };
 
     // 3. GUARDAR EN FIREBASE
@@ -166,6 +168,7 @@ export default function EditorLayout() {
             const docRef = doc(db, "libros", bookId);
             await setDoc(docRef, {
                 titulo: bookTitle,
+                bookSize: bookSize, // Guarda el tamaño elegido en la nube
                 paginas: pages,
                 fechaActualizacion: new Date().toLocaleDateString()
             }, { merge: true });
@@ -232,6 +235,24 @@ export default function EditorLayout() {
                     {/* ================= TAB 1: PÁGINAS ================= */}
                     {activeTab === 'pages' && (
                         <div className={`${!sidebarOpen && 'flex flex-col items-center'} px-3`}>
+
+                            {/* NUEVO: Configuración Global del Libro */}
+                            <div className="mb-6 border-b border-gray-800 pb-4">
+                                <p className={`text-xs uppercase tracking-wider text-gray-500 font-bold mb-3 ${!sidebarOpen && 'hidden'}`}>Formato del Libro</p>
+                                {sidebarOpen && (
+                                    <select
+                                        value={bookSize}
+                                        onChange={(e) => setBookSize(e.target.value)}
+                                        className="w-full bg-gray-800 text-sm text-gray-200 p-2.5 rounded border border-gray-700 focus:border-emerald-500 focus:outline-none"
+                                    >
+                                        <option value="standard">Pantalla (850x550)</option>
+                                        <option value="trade">Trade Paperback (6x9")</option>
+                                        <option value="letter">Carta / Letter (8.5x11")</option>
+                                        <option value="a4">Formato A4</option>
+                                        <option value="square">Cuadrado (8x8")</option>
+                                    </select>
+                                )}
+                            </div>
 
                             <div className="mb-6 border-b border-gray-800 pb-4">
                                 <p className={`text-xs uppercase tracking-wider text-gray-500 font-bold mb-3 ${!sidebarOpen && 'hidden'}`}>Importar Datos</p>
@@ -324,6 +345,52 @@ export default function EditorLayout() {
                                 </button>
                             </div>
 
+                            {currentPage.tipo === 'ave' && (
+                                <ControlPanel title="Estructura y Decoración">
+                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                        <button onClick={() => updateCurrentPageConfig('imagePosition', 'left')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.imagePosition !== 'right' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Foto Izquierda</button>
+                                        <button onClick={() => updateCurrentPageConfig('imagePosition', 'right')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.imagePosition === 'right' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Foto Derecha</button>
+                                    </div>
+
+                                    {/* NUEVO: Checkbox para ocultar círculo */}
+                                    <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer mt-2 bg-gray-800 p-2 rounded border border-gray-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={currentPage.config.showCornerCircle !== false}
+                                            onChange={(e) => updateCurrentPageConfig('showCornerCircle', e.target.checked)}
+                                            className="accent-emerald-500 w-4 h-4"
+                                        />
+                                        Mostrar círculo en la esquina
+                                    </label>
+                                </ControlPanel>
+                            )}
+
+                            {(currentPage.tipo === 'ave' || currentPage.tipo === 'foto') && (
+                                <ControlPanel title="Imagen / Fotografía">
+                                    <div className="flex items-center gap-2 mb-3 bg-gray-800 p-2 rounded border border-gray-700">
+                                        <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                        <input
+                                            type="text"
+                                            placeholder="Pega aquí el link de la imagen..."
+                                            value={currentPage.config.imageSrc || ''}
+                                            onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)}
+                                            className="bg-transparent text-sm text-white w-full focus:outline-none"
+                                        />
+                                    </div>
+
+                                    <label className="text-sm text-gray-400 block mb-1">Opacidad (Transparencia)</label>
+                                    <div className="flex items-center gap-2">
+                                        <Droplets className="w-4 h-4 text-gray-600" />
+                                        <input
+                                            type="range" min="0" max="1" step="0.05"
+                                            value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1}
+                                            onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))}
+                                            className="w-full h-1 accent-emerald-500 cursor-pointer"
+                                        />
+                                    </div>
+                                </ControlPanel>
+                            )}
+
                             <ControlPanel title="Colores">
                                 <div className="flex items-center justify-between gap-2">
                                     <label className="text-sm text-gray-400">Fondo</label>
@@ -342,24 +409,6 @@ export default function EditorLayout() {
                                     </>
                                 )}
                             </ControlPanel>
-
-                            {(currentPage.tipo === 'ave' || currentPage.tipo === 'foto') && (
-                                <ControlPanel title="Imagen">
-                                    <button onClick={() => updateCurrentPageConfig('imageSrc', prompt('Pega la URL de la imagen:'))} className="flex items-center justify-center w-full p-2 bg-gray-700 rounded text-sm hover:bg-gray-600 mb-3 text-white">
-                                        <Upload className="w-4 h-4 mr-2" /> Subir/Cambiar Foto
-                                    </button>
-                                    <label className="text-sm text-gray-400 block mb-1">Opacidad (Transparencia)</label>
-                                    <div className="flex items-center gap-2">
-                                        <Droplets className="w-4 h-4 text-gray-600" />
-                                        <input
-                                            type="range" min="0" max="1" step="0.05"
-                                            value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1}
-                                            onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))}
-                                            className="w-full h-1 accent-emerald-500 cursor-pointer"
-                                        />
-                                    </div>
-                                </ControlPanel>
-                            )}
 
                             {currentPage.tipo === 'portada' && (
                                 <ControlPanel title="Alineación Título">
@@ -403,7 +452,8 @@ export default function EditorLayout() {
 
                     {/* Renderizador de la página */}
                     <div className="transition-all duration-300 transform scale-100 origin-center print:scale-100">
-                        <PageRenderer pageData={pages[currentPageIndex]} />
+                        {/* Le pasamos el bookSize al renderizador */}
+                        <PageRenderer pageData={pages[currentPageIndex]} bookSize={bookSize} />
                     </div>
 
                     <p className="text-xs text-gray-500 mt-6 print:hidden">Libro: {bookTitle} | Página {currentPageIndex + 1} de {pages.length}</p>
