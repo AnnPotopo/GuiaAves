@@ -29,7 +29,6 @@ const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock }) => {
     );
 };
 
-// MOTOR DE COLORES DINÁMICOS PARA CONSERVACIÓN
 const getStatusColor = (type, text, fallbackColor) => {
     if (!text) return fallbackColor;
     const s = text.toLowerCase();
@@ -53,7 +52,6 @@ const getStatusColor = (type, text, fallbackColor) => {
     return fallbackColor;
 };
 
-// Función para convertir Hex a RGBA para el fondo del título
 const hexToRgba = (hex, alpha) => {
     if (!hex) return `rgba(0, 0, 0, ${alpha})`;
     const r = parseInt(hex.slice(1, 3), 16) || 0;
@@ -62,7 +60,15 @@ const hexToRgba = (hex, alpha) => {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-export default function PageRenderer({ pageData, bookSize = 'standard' }) {
+// Componente para las guías de imprenta
+const PrintGuides = ({ showBleed, showMargins }) => (
+    <>
+        {showBleed && <div className="absolute inset-0 border-[3mm] border-red-500/50 border-dashed z-50 pointer-events-none" title="Sangría (Bleed) de 3mm"></div>}
+        {showMargins && <div className="absolute inset-0 m-[15mm] border border-blue-500/50 border-dashed z-50 pointer-events-none" title="Margen de Seguridad (1.5cm)"></div>}
+    </>
+);
+
+export default function PageRenderer({ pageData, bookSize = 'trade', printSettings = {} }) {
     if (!pageData) return null;
 
     const config = pageData.config || {};
@@ -76,127 +82,153 @@ export default function PageRenderer({ pageData, bookSize = 'standard' }) {
     const titleBgColor = config.titleBgColor || '#000000';
     const titleBgOpacity = config.titleBgOpacity !== undefined ? config.titleBgOpacity : 0.6;
 
+    const { showBleed = false, showMargins = false, splitPages = false } = printSettings;
+
+    // Tamaños EXACTOS de imprenta (Ancho x Alto). 
+    // Trade Paperback: 6x9 pulgadas = 152.4 x 228.6 mm. 
+    // Si splitPages es true, mostramos 1 página. Si es falso, mostramos el pliego doble (304.8 x 228.6 mm).
     const sizeStyles = {
-        standard: { width: '850px', height: '550px' },
-        trade: { width: '900px', height: '675px' },
-        letter: { width: '1020px', height: '660px' },
-        a4: { width: '990px', height: '700px' },
-        square: { width: '1000px', height: '500px' }
+        trade: { width: splitPages ? '152.4mm' : '304.8mm', height: '228.6mm' },
+        letter: { width: splitPages ? '215.9mm' : '431.8mm', height: '279.4mm' },
+        standard: { width: splitPages ? '425px' : '850px', height: '550px' }
     };
 
-    const currentDimensions = sizeStyles[bookSize] || sizeStyles.standard;
-    const bookContainerClass = "shadow-2xl flex rounded-sm overflow-hidden relative print:shadow-none print:w-[100vw] print:h-[100vh]";
+    const currentDimensions = sizeStyles[bookSize] || sizeStyles.trade;
+
+    // Clase base. Evitamos saltos de página dentro del contenedor al imprimir.
+    const bookContainerClass = "shadow-2xl flex rounded-sm overflow-hidden relative print:shadow-none bg-white break-inside-avoid print:mb-0";
 
     const isBlockField = (field, defaultBlock = false) => {
         return config[`block_${field}`] !== undefined ? config[`block_${field}`] : defaultBlock;
     };
 
-    // 1. Portada
-    if (pageData.tipo === 'portada') {
+    // ==========================================
+    // RENDERIZADO POR TIPO DE PÁGINA
+    // ==========================================
+
+    if (pageData.tipo === 'portada' || pageData.tipo === 'blanco' || pageData.tipo === 'foto') {
         const isCentered = config.layout === 'center';
         return (
             <div className={bookContainerClass} style={{ ...currentDimensions, backgroundColor: bgColor, color: textColor }}>
-                <div className={`absolute inset-0 flex flex-col p-16 ${isCentered ? 'items-center justify-center text-center' : 'justify-end'}`}>
-                    <h1 className="text-6xl font-bold mb-4 leading-tight">{config.titulo || 'Título del Libro'}</h1>
-                    <p className="text-xl opacity-80">{config.subtitulo || 'Guía de Campo'}</p>
-                </div>
-                {showCircle && <div className="absolute top-0 right-0 w-40 h-40 rounded-bl-full opacity-20" style={{ backgroundColor: themeColor }}></div>}
-            </div>
-        );
-    }
+                <PrintGuides showBleed={showBleed} showMargins={showMargins} />
 
-    // 2. Ficha de Ave
-    if (pageData.tipo === 'ave') {
-        const isImageRight = config.imagePosition === 'right';
-        const nomColor = getStatusColor('nom059', config.nom059, themeColor);
-        const iucnColor = getStatusColor('iucn', config.iucn, themeColor);
-
-        return (
-            <div className={`${bookContainerClass} ${isImageRight ? 'flex-row-reverse' : 'flex-row'}`} style={{ ...currentDimensions, backgroundColor: bgColor, color: textColor }}>
-                {/* LADO DE LA IMAGEN */}
-                <div className={`w-1/2 h-full relative overflow-hidden ${isImageRight ? 'border-l' : 'border-r'} border-gray-100`} style={{ backgroundColor: bgColor }}>
-                    {/* TÍTULO SOBRE LA IMAGEN */}
-                    {titlePosition === 'image' && (
-                        <div
-                            className="absolute top-0 left-0 w-full p-6 z-20 flex flex-col justify-start"
-                            style={{ backgroundColor: hexToRgba(titleBgColor, titleBgOpacity) }}
-                        >
-                            <h2 className="text-3xl font-bold mb-1 text-white">{config.nombreComun || 'Nombre Común'}</h2>
-                            <h3 className="text-md italic text-gray-200 font-serif">{config.nombreCientifico || 'Nombre Científico'}</h3>
+                {pageData.tipo === 'portada' && (
+                    <>
+                        <div className={`absolute inset-0 flex flex-col p-[15mm] z-10 ${isCentered ? 'items-center justify-center text-center' : 'justify-end'}`}>
+                            <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight">{config.titulo || 'Título del Libro'}</h1>
+                            <p className="text-xl opacity-80">{config.subtitulo || 'Guía de Campo'}</p>
                         </div>
-                    )}
+                        {showCircle && <div className="absolute top-0 right-0 w-32 h-32 rounded-bl-full opacity-20 z-0" style={{ backgroundColor: themeColor }}></div>}
+                    </>
+                )}
 
-                    {/* IMAGEN */}
-                    {config.imageSrc ? (
-                        <img src={config.imageSrc} alt="Ave" className="absolute inset-0 w-full h-full object-cover z-0" style={{ opacity: imgOpacity }} />
+                {pageData.tipo === 'foto' && (
+                    config.imageSrc ? (
+                        <img src={config.imageSrc} alt="Foto" className="w-full h-full object-cover" style={{ opacity: imgOpacity }} />
                     ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 p-8 text-center z-0">
-                            <ImageIcon className="w-16 h-16 mb-4" />
-                            <p className="text-sm">Falta imagen para: {config.nombreComun}</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* LADO DE LOS DATOS */}
-                <div className="w-1/2 h-full p-8 md:p-10 relative flex flex-col">
-                    {showCircle && <div className={`absolute top-0 ${isImageRight ? 'left-0 rounded-br-full' : 'right-0 rounded-bl-full'} w-24 h-24 print:border opacity-80 z-10`} style={{ backgroundColor: themeColor }}></div>}
-
-                    {/* TÍTULO SOBRE LOS DATOS (CLÁSICO) */}
-                    {titlePosition !== 'image' && (
-                        <div className="relative z-20 mb-5 border-b pb-3" style={{ borderColor: `${themeColor}33` }}>
-                            <h2 className="text-3xl font-bold mb-1" style={{ color: textColor }}>{config.nombreComun || 'Nombre Común'}</h2>
-                            <h3 className="text-md italic opacity-70 font-serif">{config.nombreCientifico || 'Nombre Científico'}</h3>
-                        </div>
-                    )}
-
-                    <div className={`space-y-3 flex-1 overflow-y-auto custom-scrollbar relative z-20 ${isImageRight ? 'pl-2' : 'pr-3'} ${titlePosition === 'image' ? 'pt-4' : ''}`}>
-
-                        {/* NUEVO: ORDEN Y FAMILIA EN EL MISMO RENGLÓN */}
-                        <div className="flex flex-col gap-2 mb-2">
-                            <div className="flex items-start gap-4">
-                                <div className="flex-1">
-                                    <BirdDetailItem Icon={ListTree} label="Orden" value={config.orden} iconColor={themeColor} isBlock={isBlockField('orden')} />
-                                </div>
-                                <div className="flex-1">
-                                    <BirdDetailItem Icon={Feather} label="Familia" value={config.familia} iconColor={themeColor} isBlock={isBlockField('familia')} />
-                                </div>
-                            </div>
-                            <BirdDetailItem Icon={Scale} label="Longitud" value={config.longitud} iconColor={themeColor} isBlock={isBlockField('longitud')} />
-                        </div>
-
-                        <div className="bg-black/5 p-3 rounded-md space-y-2 my-2">
-                            <BirdDetailItem Icon={ShieldAlert} label="NOM 059" value={config.nom059} iconColor={nomColor} isBlock={isBlockField('nom059')} />
-                            <BirdDetailItem Icon={ShieldAlert} label="IUCN" value={config.iucn} iconColor={iucnColor} isBlock={isBlockField('iucn')} />
-                        </div>
-
-                        <BirdDetailItem Icon={MapPin} label="Hábitat" value={config.habitat} iconColor={themeColor} isBlock={isBlockField('habitat')} />
-                        <BirdDetailItem Icon={Utensils} label="Alimentación" value={config.alimentacion} iconColor={themeColor} isBlock={isBlockField('alimentacion')} />
-                        <BirdDetailItem Icon={Mic} label="Canto/Llamado" value={config.canto} iconColor={themeColor} isBlock={isBlockField('canto')} />
-                        <BirdDetailItem Icon={Activity} label="Dimorfismo" value={config.dimorfismo} iconColor={themeColor} isBlock={isBlockField('dimorfismo')} />
-
-                        <BirdDetailItem Icon={Info} label="Descripción" value={config.descripcion} iconColor={themeColor} isBlock={isBlockField('descripcion', true)} />
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // 3. Foto
-    if (pageData.tipo === 'foto') {
-        return (
-            <div className={bookContainerClass} style={{ ...currentDimensions, backgroundColor: bgColor }}>
-                {config.imageSrc ? (
-                    <img src={config.imageSrc} alt="Foto completa" className="w-full h-full object-cover" style={{ opacity: imgOpacity }} />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center opacity-30"><ImageIcon className="w-16 h-16" /></div>
+                        <div className="w-full h-full flex items-center justify-center opacity-30"><ImageIcon className="w-16 h-16" /></div>
+                    )
                 )}
             </div>
         );
     }
 
-    // 4. Blanco
-    if (pageData.tipo === 'blanco') {
-        return <div className={bookContainerClass} style={{ ...currentDimensions, backgroundColor: bgColor }}></div>;
+    // ==========================================
+    // FICHA DE AVE (Manejo de Pliego vs Páginas Sueltas)
+    // ==========================================
+    if (pageData.tipo === 'ave') {
+        const isImageRight = config.imagePosition === 'right';
+        const nomColor = getStatusColor('nom059', config.nom059, themeColor);
+        const iucnColor = getStatusColor('iucn', config.iucn, themeColor);
+
+        // Contenido de la Mitad: IMAGEN
+        const ImageSide = () => (
+            <div className={`relative overflow-hidden ${splitPages ? 'w-full h-full break-after-page' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor }}>
+                <PrintGuides showBleed={showBleed} showMargins={showMargins} />
+                {titlePosition === 'image' && (
+                    <div
+                        className="absolute top-0 left-0 w-full p-6 z-20 flex flex-col justify-start"
+                        style={{ backgroundColor: hexToRgba(titleBgColor, titleBgOpacity), paddingTop: showMargins ? '15mm' : '1.5rem', paddingLeft: showMargins ? '15mm' : '1.5rem' }}
+                    >
+                        <h2 className="text-2xl md:text-3xl font-bold mb-1 text-white">{config.nombreComun || 'Nombre Común'}</h2>
+                        <h3 className="text-sm md:text-md italic text-gray-200 font-serif">{config.nombreCientifico || 'Nombre Científico'}</h3>
+                    </div>
+                )}
+                {config.imageSrc ? (
+                    <img src={config.imageSrc} alt="Ave" className="absolute inset-0 w-full h-full object-cover z-0" style={{ opacity: imgOpacity }} />
+                ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 p-8 text-center z-0">
+                        <ImageIcon className="w-16 h-16 mb-4" />
+                        <p className="text-sm">Falta imagen</p>
+                    </div>
+                )}
+            </div>
+        );
+
+        // Contenido de la Mitad: DATOS
+        const DataSide = () => (
+            <div className={`p-[15mm] relative flex flex-col bg-white ${splitPages ? 'w-full h-full break-after-page' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, color: textColor }}>
+                <PrintGuides showBleed={showBleed} showMargins={showMargins} />
+                {showCircle && <div className={`absolute top-0 ${isImageRight && !splitPages ? 'left-0 rounded-br-full' : 'right-0 rounded-bl-full'} w-24 h-24 print:border opacity-80 z-10`} style={{ backgroundColor: themeColor }}></div>}
+
+                {titlePosition !== 'image' && (
+                    <div className="relative z-20 mb-4 border-b pb-2" style={{ borderColor: `${themeColor}33` }}>
+                        <h2 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: textColor }}>{config.nombreComun || 'Nombre Común'}</h2>
+                        <h3 className="text-sm md:text-md italic opacity-70 font-serif">{config.nombreCientifico || 'Nombre Científico'}</h3>
+                    </div>
+                )}
+
+                <div className={`space-y-2.5 flex-1 overflow-hidden relative z-20 ${titlePosition === 'image' ? 'pt-4' : ''}`}>
+                    <div className="flex flex-col gap-1.5 mb-2">
+                        <div className="flex items-start gap-4">
+                            <div className="flex-1">
+                                <BirdDetailItem Icon={ListTree} label="Orden" value={config.orden} iconColor={themeColor} isBlock={isBlockField('orden')} />
+                            </div>
+                            <div className="flex-1">
+                                <BirdDetailItem Icon={Feather} label="Familia" value={config.familia} iconColor={themeColor} isBlock={isBlockField('familia')} />
+                            </div>
+                        </div>
+                        <BirdDetailItem Icon={Scale} label="Longitud" value={config.longitud} iconColor={themeColor} isBlock={isBlockField('longitud')} />
+                    </div>
+
+                    <div className="bg-black/5 p-2 rounded-md space-y-1.5 my-2">
+                        <BirdDetailItem Icon={ShieldAlert} label="NOM 059" value={config.nom059} iconColor={nomColor} isBlock={isBlockField('nom059')} />
+                        <BirdDetailItem Icon={ShieldAlert} label="IUCN" value={config.iucn} iconColor={iucnColor} isBlock={isBlockField('iucn')} />
+                    </div>
+
+                    <BirdDetailItem Icon={MapPin} label="Hábitat" value={config.habitat} iconColor={themeColor} isBlock={isBlockField('habitat')} />
+                    <BirdDetailItem Icon={Utensils} label="Alimentación" value={config.alimentacion} iconColor={themeColor} isBlock={isBlockField('alimentacion')} />
+                    <BirdDetailItem Icon={Mic} label="Canto/Llamado" value={config.canto} iconColor={themeColor} isBlock={isBlockField('canto')} />
+                    <BirdDetailItem Icon={Activity} label="Dimorfismo" value={config.dimorfismo} iconColor={themeColor} isBlock={isBlockField('dimorfismo')} />
+
+                    <div className="pt-1">
+                        <BirdDetailItem Icon={Info} label="Descripción" value={config.descripcion} iconColor={themeColor} isBlock={isBlockField('descripcion', true)} />
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Si la imprenta pide páginas sueltas, renderizamos dos divs separados
+        if (splitPages) {
+            return (
+                <div className="flex flex-col gap-8 print:gap-0 print:block">
+                    <div className={bookContainerClass} style={currentDimensions}>
+                        {isImageRight ? <DataSide /> : <ImageSide />}
+                    </div>
+                    <div className={bookContainerClass} style={currentDimensions}>
+                        {isImageRight ? <ImageSide /> : <DataSide />}
+                    </div>
+                </div>
+            );
+        }
+
+        // Si estamos en pantalla editando, renderizamos el pliego junto
+        return (
+            <div className={`${bookContainerClass} ${isImageRight ? 'flex-row-reverse' : 'flex-row'}`} style={currentDimensions}>
+                <ImageSide />
+                <DataSide />
+            </div>
+        );
     }
 
     return null;

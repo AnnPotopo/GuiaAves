@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Menu, Upload, Save, ArrowLeft, FileText,
     Square, Palette, Layers3, Droplets, AlignCenter, Layout,
-    Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck
+    Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck, Printer, AlertTriangle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -44,13 +44,20 @@ export default function EditorLayout() {
     const navigate = useNavigate();
 
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [activeTab, setActiveTab] = useState('pages');
+    const [activeTab, setActiveTab] = useState('pages'); // pages, content, design, print
     const [isSaving, setIsSaving] = useState(false);
 
     const [bookTitle, setBookTitle] = useState("Cargando...");
-    const [bookSize, setBookSize] = useState("standard");
+    const [bookSize, setBookSize] = useState("trade"); // Por defecto Trade Paperback para imprenta
     const [pages, setPages] = useState([]);
     const [currentPageIndex, setCurrentPageIndex] = useState(0);
+
+    // Estados de Configuración de Imprenta
+    const [printSettings, setPrintSettings] = useState({
+        showBleed: false,
+        showMargins: false,
+        splitPages: false
+    });
 
     useEffect(() => {
         const loadBookFromFirebase = async () => {
@@ -62,7 +69,7 @@ export default function EditorLayout() {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     setBookTitle(data.titulo || "Sin título");
-                    setBookSize(data.bookSize || "standard");
+                    setBookSize(data.bookSize || "trade");
                     setPages(data.paginas || []);
                 } else {
                     alert("No se encontró este libro en la base de datos.");
@@ -85,6 +92,10 @@ export default function EditorLayout() {
             };
             return newPages;
         });
+    };
+
+    const updatePrintSettings = (key, value) => {
+        setPrintSettings(prev => ({ ...prev, [key]: value }));
     };
 
     const handleDeletePage = () => {
@@ -169,10 +180,18 @@ export default function EditorLayout() {
         }
     };
 
+    const handlePrint = () => {
+        // Forzamos la vista de páginas sueltas antes de imprimir la Tripa
+        updatePrintSettings('splitPages', true);
+        setTimeout(() => {
+            window.print();
+        }, 500);
+    };
+
     return (
         <div className="flex h-screen bg-gray-200 overflow-hidden font-sans">
 
-            {/* MENÚ LATERAL IZQUIERDO (HERRAMIENTAS) */}
+            {/* MENÚ LATERAL IZQUIERDO */}
             <div className={`bg-[#111827] text-gray-300 transition-all duration-300 flex flex-col z-20 ${sidebarOpen ? 'w-[320px]' : 'w-16'}`}>
 
                 <div className="flex flex-col border-b border-gray-800">
@@ -197,8 +216,9 @@ export default function EditorLayout() {
                     )}
                 </div>
 
+                {/* Tabs de navegación ampliados */}
                 {sidebarOpen && (
-                    <div className="flex border-b border-gray-800 text-[11px] font-bold tracking-wider shrink-0">
+                    <div className="flex border-b border-gray-800 text-[9px] font-bold tracking-wider shrink-0">
                         <button onClick={() => setActiveTab('pages')} className={`flex-1 p-3 flex flex-col items-center gap-1 ${activeTab === 'pages' ? 'bg-gray-800 text-white' : 'hover:bg-gray-800'}`}>
                             <Layers3 className="w-4 h-4" /> PÁGINAS
                         </button>
@@ -207,6 +227,9 @@ export default function EditorLayout() {
                         </button>
                         <button onClick={() => setActiveTab('design')} className={`flex-1 p-3 flex flex-col items-center gap-1 ${activeTab === 'design' ? 'bg-gray-800 text-white' : 'hover:bg-gray-800'}`}>
                             <Palette className="w-4 h-4" /> DISEÑO
+                        </button>
+                        <button onClick={() => setActiveTab('print')} className={`flex-1 p-3 flex flex-col items-center gap-1 ${activeTab === 'print' ? 'bg-emerald-800 text-white' : 'hover:bg-gray-800'}`}>
+                            <Printer className="w-4 h-4" /> IMPRENTA
                         </button>
                     </div>
                 )}
@@ -224,11 +247,9 @@ export default function EditorLayout() {
                                         onChange={(e) => setBookSize(e.target.value)}
                                         className="w-full bg-gray-800 text-sm text-gray-200 p-2.5 rounded border border-gray-700 focus:border-emerald-500 focus:outline-none"
                                     >
-                                        <option value="standard">Pantalla (850x550)</option>
                                         <option value="trade">Trade Paperback (6x9")</option>
                                         <option value="letter">Carta / Letter (8.5x11")</option>
-                                        <option value="a4">Formato A4</option>
-                                        <option value="square">Cuadrado (8x8")</option>
+                                        <option value="standard">Pantalla Web</option>
                                     </select>
                                 )}
                             </div>
@@ -255,10 +276,6 @@ export default function EditorLayout() {
                                 <ImageIcon className="w-5 h-5 min-w-[20px] text-purple-400" />
                                 {sidebarOpen && <span className="ml-3 text-sm">Página de Foto</span>}
                             </button>
-                            <button onClick={() => handleAddPage('blanco')} className="flex items-center w-full p-2.5 rounded hover:bg-gray-800 transition">
-                                <Layout className="w-5 h-5 min-w-[20px] text-gray-400" />
-                                {sidebarOpen && <span className="ml-3 text-sm">Página en Blanco</span>}
-                            </button>
                         </div>
                     )}
 
@@ -270,7 +287,7 @@ export default function EditorLayout() {
                                     <p className="text-[10px] text-gray-400 uppercase">Editando Textos</p>
                                     <p className="font-bold text-white capitalize">Pág. {currentPageIndex + 1}: {currentPage.tipo}</p>
                                 </div>
-                                <button onClick={handleDeletePage} className="text-red-400 hover:text-red-300 bg-red-400/10 p-2 rounded" title="Eliminar Página">
+                                <button onClick={handleDeletePage} className="text-red-400 hover:text-red-300 bg-red-400/10 p-2 rounded">
                                     <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
@@ -302,12 +319,6 @@ export default function EditorLayout() {
                                     <TextInput label="Descripción" value={currentPage.config.descripcion} onChange={(val) => updateCurrentPageConfig('descripcion', val)} isTextArea />
                                 </div>
                             )}
-
-                            {(currentPage.tipo === 'foto' || currentPage.tipo === 'blanco') && (
-                                <div className="text-center p-6 text-gray-500 text-sm">
-                                    Esta página no contiene campos de texto editables. Ve a la pestaña de <b>Diseño</b> para modificarla.
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -319,7 +330,7 @@ export default function EditorLayout() {
                                     <p className="text-[10px] text-gray-400 uppercase">Editando Estilos</p>
                                     <p className="font-bold text-white capitalize">Pág. {currentPageIndex + 1}: {currentPage.tipo}</p>
                                 </div>
-                                <button onClick={handleDeletePage} className="text-red-400 hover:text-red-300 bg-red-400/10 p-2 rounded" title="Eliminar Página">
+                                <button onClick={handleDeletePage} className="text-red-400 hover:text-red-300 bg-red-400/10 p-2 rounded">
                                     <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
@@ -331,7 +342,6 @@ export default function EditorLayout() {
                                         <button onClick={() => updateCurrentPageConfig('titlePosition', 'image')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.titlePosition === 'image' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>En Foto</button>
                                     </div>
 
-                                    {/* Aparece el color y slider solo si el título está en la foto */}
                                     {currentPage.config.titlePosition === 'image' && (
                                         <div className="mt-4 p-3 bg-gray-800 rounded border border-gray-700">
                                             <div className="flex items-center justify-between gap-2 mb-3">
@@ -376,7 +386,6 @@ export default function EditorLayout() {
 
                             {currentPage.tipo === 'ave' && (
                                 <ControlPanel title="Formato de Campos (Sangría vs Bloque)">
-                                    <p className="text-[10px] text-gray-500 mb-3 -mt-2">Elige si el texto va junto al icono o debajo de él.</p>
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
                                             { id: 'orden', label: 'Orden' },
@@ -412,44 +421,71 @@ export default function EditorLayout() {
                                         <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                                         <input
                                             type="text"
-                                            placeholder="Pega aquí el link de la imagen..."
+                                            placeholder="Pega aquí el link..."
                                             value={currentPage.config.imageSrc || ''}
                                             onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)}
                                             className="bg-transparent text-sm text-white w-full focus:outline-none"
                                         />
                                     </div>
-
-                                    <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase">Opacidad de la Imagen</label>
-                                    <div className="flex items-center gap-2 bg-gray-800 p-2 rounded border border-gray-700">
-                                        <Droplets className="w-4 h-4 text-gray-500" />
-                                        <input
-                                            type="range" min="0" max="1" step="0.05"
-                                            value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1}
-                                            onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))}
-                                            className="w-full h-1 accent-emerald-500 cursor-pointer"
-                                        />
-                                    </div>
                                 </ControlPanel>
                             )}
+                        </div>
+                    )}
 
-                            <ControlPanel title="Colores Generales">
-                                <div className="flex items-center justify-between gap-2">
-                                    <label className="text-sm text-gray-400">Fondo</label>
-                                    <input type="color" value={currentPage.config.backgroundColor || '#ffffff'} onChange={(e) => updateCurrentPageConfig('backgroundColor', e.target.value)} className="w-10 h-8 border-0 cursor-pointer bg-transparent" />
+                    {/* ================= TAB 4: IMPRENTA ================= */}
+                    {activeTab === 'print' && sidebarOpen && (
+                        <div className="px-4">
+                            <div className="bg-emerald-900/40 border border-emerald-800 p-4 rounded-lg mb-4">
+                                <div className="flex items-start gap-3 text-emerald-300 mb-2">
+                                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                                    <p className="text-xs font-bold uppercase tracking-wider">Aviso de Exportación</p>
                                 </div>
-                                {(currentPage.tipo === 'ave' || currentPage.tipo === 'portada') && (
-                                    <>
-                                        <div className="flex items-center justify-between gap-2">
-                                            <label className="text-sm text-gray-400">Texto Principal</label>
-                                            <input type="color" value={currentPage.config.textColor || '#1f2937'} onChange={(e) => updateCurrentPageConfig('textColor', e.target.value)} className="w-10 h-8 border-0 cursor-pointer bg-transparent" />
-                                        </div>
-                                        <div className="flex items-center justify-between gap-2">
-                                            <label className="text-sm text-gray-400">Iconos / Acentos</label>
-                                            <input type="color" value={currentPage.config.themeColor || '#3b82f6'} onChange={(e) => updateCurrentPageConfig('themeColor', e.target.value)} className="w-10 h-8 border-0 cursor-pointer bg-transparent" />
-                                        </div>
-                                    </>
-                                )}
+                                <p className="text-[11px] text-emerald-100/70 text-justify leading-relaxed">
+                                    Al generar el PDF desde el navegador, se guardará en <b>RGB</b>. Recuerda usar Acrobat o un conversor en línea para pasarlo a <b>CMYK (FOGRA39)</b> antes de entregarlo a la imprenta. Las fuentes sí se incrustarán automáticamente.
+                                </p>
+                            </div>
+
+                            <ControlPanel title="Guías Visuales">
+                                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer bg-gray-800 p-3 rounded border border-gray-700 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={printSettings.showBleed}
+                                        onChange={(e) => updatePrintSettings('showBleed', e.target.checked)}
+                                        className="accent-red-500 w-4 h-4"
+                                    />
+                                    Ver Sangría (Rebase 3mm)
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer bg-gray-800 p-3 rounded border border-gray-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={printSettings.showMargins}
+                                        onChange={(e) => updatePrintSettings('showMargins', e.target.checked)}
+                                        className="accent-blue-500 w-4 h-4"
+                                    />
+                                    Ver Márgenes Seguros (1.5cm)
+                                </label>
                             </ControlPanel>
+
+                            <ControlPanel title="Formato de Exportación">
+                                <p className="text-[11px] text-gray-400 mb-3">La imprenta requiere la "Tripa" (interiores) en páginas separadas, no en pliegos.</p>
+                                <label className="flex items-center gap-2 text-sm text-emerald-400 font-bold cursor-pointer bg-gray-800 p-3 rounded border border-emerald-800/50">
+                                    <input
+                                        type="checkbox"
+                                        checked={printSettings.splitPages}
+                                        onChange={(e) => updatePrintSettings('splitPages', e.target.checked)}
+                                        className="accent-emerald-500 w-4 h-4"
+                                    />
+                                    Modo "Páginas Sueltas"
+                                </label>
+                            </ControlPanel>
+
+                            <button
+                                onClick={handlePrint}
+                                className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded shadow-lg flex items-center justify-center gap-2"
+                            >
+                                <Printer className="w-5 h-5" />
+                                Preparar PDF (Tripa)
+                            </button>
                         </div>
                     )}
                 </div>
@@ -468,8 +504,16 @@ export default function EditorLayout() {
             <div className="flex-1 flex flex-col relative overflow-auto bg-gray-300 print:bg-white z-0">
                 <div className="min-h-full p-8 flex flex-col items-center justify-center print:p-0">
 
-                    <div className="transition-all duration-300 transform scale-100 origin-center print:scale-100 shadow-2xl">
-                        <PageRenderer pageData={pages[currentPageIndex]} bookSize={bookSize} />
+                    {/* Renderizado de UNA sola página en pantalla */}
+                    <div className="transition-all duration-300 transform scale-100 origin-center print:hidden shadow-2xl">
+                        <PageRenderer pageData={pages[currentPageIndex]} bookSize={bookSize} printSettings={printSettings} />
+                    </div>
+
+                    {/* ESTE CONTENEDOR ESTÁ OCULTO EN PANTALLA, SOLO SE MUESTRA AL IMPRIMIR EL PDF COMPLETO */}
+                    <div className="hidden print:block w-full">
+                        {pages.map((p) => (
+                            <PageRenderer key={`print-${p.id}`} pageData={p} bookSize={bookSize} printSettings={printSettings} />
+                        ))}
                     </div>
 
                     <p className="text-xs text-gray-500 mt-6 print:hidden font-mono bg-white/50 px-3 py-1 rounded">Libro: {bookTitle} | Formato: {bookSize}</p>
