@@ -53,6 +53,15 @@ const getStatusColor = (type, text, fallbackColor) => {
     return fallbackColor;
 };
 
+// Función para convertir Hex a RGBA para el fondo del título
+const hexToRgba = (hex, alpha) => {
+    if (!hex) return `rgba(0, 0, 0, ${alpha})`;
+    const r = parseInt(hex.slice(1, 3), 16) || 0;
+    const g = parseInt(hex.slice(3, 5), 16) || 0;
+    const b = parseInt(hex.slice(5, 7), 16) || 0;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 export default function PageRenderer({ pageData, bookSize = 'standard' }) {
     if (!pageData) return null;
 
@@ -63,7 +72,9 @@ export default function PageRenderer({ pageData, bookSize = 'standard' }) {
     const themeColor = config.themeColor || '#3b82f6';
     const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
     const showCircle = config.showCornerCircle !== false;
-    const titlePosition = config.titlePosition || 'data'; // 'data' o 'image'
+    const titlePosition = config.titlePosition || 'data';
+    const titleBgColor = config.titleBgColor || '#000000';
+    const titleBgOpacity = config.titleBgOpacity !== undefined ? config.titleBgOpacity : 0.6;
 
     const sizeStyles = {
         standard: { width: '850px', height: '550px' },
@@ -108,7 +119,7 @@ export default function PageRenderer({ pageData, bookSize = 'standard' }) {
                     {titlePosition === 'image' && (
                         <div
                             className="absolute top-0 left-0 w-full p-6 z-20 flex flex-col justify-start"
-                            style={{ backgroundColor: `rgba(0, 0, 0, ${config.titleBgOpacity !== undefined ? config.titleBgOpacity : 0.6})` }}
+                            style={{ backgroundColor: hexToRgba(titleBgColor, titleBgOpacity) }}
                         >
                             <h2 className="text-3xl font-bold mb-1 text-white">{config.nombreComun || 'Nombre Común'}</h2>
                             <h3 className="text-md italic text-gray-200 font-serif">{config.nombreCientifico || 'Nombre Científico'}</h3>
@@ -139,9 +150,17 @@ export default function PageRenderer({ pageData, bookSize = 'standard' }) {
                     )}
 
                     <div className={`space-y-3 flex-1 overflow-y-auto custom-scrollbar relative z-20 ${isImageRight ? 'pl-2' : 'pr-3'} ${titlePosition === 'image' ? 'pt-4' : ''}`}>
-                        <div className="grid grid-cols-1 gap-2 mb-2">
-                            <BirdDetailItem Icon={ListTree} label="Orden" value={config.orden} iconColor={themeColor} isBlock={isBlockField('orden')} />
-                            <BirdDetailItem Icon={Feather} label="Familia" value={config.familia} iconColor={themeColor} isBlock={isBlockField('familia')} />
+
+                        {/* NUEVO: ORDEN Y FAMILIA EN EL MISMO RENGLÓN */}
+                        <div className="flex flex-col gap-2 mb-2">
+                            <div className="flex items-start gap-4">
+                                <div className="flex-1">
+                                    <BirdDetailItem Icon={ListTree} label="Orden" value={config.orden} iconColor={themeColor} isBlock={isBlockField('orden')} />
+                                </div>
+                                <div className="flex-1">
+                                    <BirdDetailItem Icon={Feather} label="Familia" value={config.familia} iconColor={themeColor} isBlock={isBlockField('familia')} />
+                                </div>
+                            </div>
                             <BirdDetailItem Icon={Scale} label="Longitud" value={config.longitud} iconColor={themeColor} isBlock={isBlockField('longitud')} />
                         </div>
 

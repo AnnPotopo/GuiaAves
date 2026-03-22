@@ -104,7 +104,7 @@ export default function EditorLayout() {
         const newPage = {
             id: Date.now().toString(),
             tipo: tipo,
-            config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6 }
+            config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000' }
         };
         setPages([...pages, newPage]);
         setCurrentPageIndex(pages.length);
@@ -127,7 +127,7 @@ export default function EditorLayout() {
                 id: `excel-${Date.now()}-${index}`,
                 tipo: 'ave',
                 config: {
-                    backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6,
+                    backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000',
                     nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '',
                     nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
                     orden: row['Orden'] || '',
@@ -331,18 +331,24 @@ export default function EditorLayout() {
                                         <button onClick={() => updateCurrentPageConfig('titlePosition', 'image')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.titlePosition === 'image' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>En Foto</button>
                                     </div>
 
-                                    {/* Aparece el slider solo si el título está en la foto */}
+                                    {/* Aparece el color y slider solo si el título está en la foto */}
                                     {currentPage.config.titlePosition === 'image' && (
-                                        <div className="mt-4">
-                                            <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase">Transparencia del fondo</label>
-                                            <div className="flex items-center gap-2 bg-gray-800 p-2 rounded border border-gray-700">
-                                                <Droplets className="w-4 h-4 text-gray-500" />
-                                                <input
-                                                    type="range" min="0" max="1" step="0.05"
-                                                    value={currentPage.config.titleBgOpacity !== undefined ? currentPage.config.titleBgOpacity : 0.6}
-                                                    onChange={(e) => updateCurrentPageConfig('titleBgOpacity', parseFloat(e.target.value))}
-                                                    className="w-full h-1 accent-emerald-500 cursor-pointer"
-                                                />
+                                        <div className="mt-4 p-3 bg-gray-800 rounded border border-gray-700">
+                                            <div className="flex items-center justify-between gap-2 mb-3">
+                                                <label className="text-[11px] text-gray-400 font-bold uppercase">Color de Fondo</label>
+                                                <input type="color" value={currentPage.config.titleBgColor || '#000000'} onChange={(e) => updateCurrentPageConfig('titleBgColor', e.target.value)} className="w-8 h-6 border-0 cursor-pointer bg-transparent" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase">Nivel de Transparencia</label>
+                                                <div className="flex items-center gap-2">
+                                                    <Droplets className="w-4 h-4 text-gray-500" />
+                                                    <input
+                                                        type="range" min="0" max="1" step="0.05"
+                                                        value={currentPage.config.titleBgOpacity !== undefined ? currentPage.config.titleBgOpacity : 0.6}
+                                                        onChange={(e) => updateCurrentPageConfig('titleBgOpacity', parseFloat(e.target.value))}
+                                                        className="w-full h-1 accent-emerald-500 cursor-pointer"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     )}
