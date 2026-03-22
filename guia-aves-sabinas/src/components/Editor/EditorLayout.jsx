@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Menu, Upload, Save, ArrowLeft, FileText, 
   Square, Palette, Layers3, Droplets, AlignCenter, Layout, 
-  Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck, Printer, AlertTriangle, BookOpen, FileDigit
+  Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck, Printer, AlertTriangle, BookOpen, FileDigit, Loader2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase/config'; 
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Importaciones para Storage
+import imageCompression from 'browser-image-compression'; // Importación del compresor mágico
+import { db, storage } from '../../firebase/config'; // Asegúrate de exportar 'storage' desde tu config
 import PageRenderer from './PageRenderer';
 import PrintEngine from './PrintEngine';
 
@@ -38,6 +40,7 @@ export default function EditorLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('pages');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false); // Nuevo estado para compresión
   
   const [editorViewMode, setEditorViewMode] = useState('spread');
 
@@ -144,6 +147,42 @@ export default function EditorLayout() {
       setTimeout(() => { window.print(); }, 500);
   };
 
+  // ==========================================================
+  // COMPRESOR Y SUBIDA DE IMÁGENES A FIREBASE
+  // ==========================================================
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+        // 1. Opciones de Compresión Profesional (Calidad Imprenta a 300 DPI)
+        const options = {
+            maxSizeMB: 2.5, // Jamás pasará de 2.5 MB (Ideal para que Firebase sea eterno)
+            maxWidthOrHeight: 2700, // Dimensión máxima en píxeles (Perfecto para 6x9 pulgadas)
+            useWebWorker: true,
+        };
+        
+        // El navegador comprime mágicamente tu foto pesada de 30MB aquí
+        const compressedFile = await imageCompression(file, options);
+
+        // 2. Subir a Firebase Storage
+        const storageRef = ref(storage, `libros/${bookId}/${Date.now()}_${compressedFile.name}`);
+        await uploadBytes(storageRef, compressedFile);
+
+        // 3. Obtener Link Público de Firebase y guardarlo en la página
+        const downloadURL = await getDownloadURL(storageRef);
+        updateCurrentPageConfig('imageSrc', downloadURL);
+
+    } catch (error) {
+        console.error("Error al procesar/subir imagen:", error);
+        alert("Ocurrió un error al procesar tu foto. Revisa la consola.");
+    } finally {
+        setIsUploadingImage(false);
+        e.target.value = null; // Limpiamos para poder subir otra
+    }
+  };
+
   return (
     <>
       <div className="flex h-screen bg-gray-200 overflow-hidden font-sans print:hidden">
@@ -233,7 +272,6 @@ export default function EditorLayout() {
                         <button onClick={handleDeletePage} className="text-red-400 hover:text-red-300 bg-red-400/10 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
                     </div>
 
-                    {/* NUEVO PANEL: TIPOGRAFÍA Y MÁRGENES EDITORIALES */}
                     <ControlPanel title="Tipografía y Diseño de Página">
                         <div className="grid grid-cols-1 gap-3">
                             <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
@@ -318,10 +356,32 @@ export default function EditorLayout() {
                     )}
 
                     {(currentPage.tipo === 'ave' || currentPage.tipo === 'foto') && (
-                      <ControlPanel title="Fotografía">
+                      <ControlPanel title="Fotografía Original">
+                          {/* NUEVO BOTÓN DE SUBIDA CON COMPRESIÓN */}
+                          <label className={`flex items-center justify-center w-full gap-2 p-2 rounded text-sm text-white cursor-pointer transition ${isUploadingImage ? 'bg-gray-600 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} mb-3 shadow`}>
+                              {isUploadingImage ? (
+                                  <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Comprimiendo y Subiendo...</span>
+                              ) : (
+                                  <><Upload className="w-4 h-4" /> Subir desde mi PC</>
+                              )}
+                              <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  className="hidden" 
+                                  onChange={handleImageUpload} 
+                                  disabled={isUploadingImage} 
+                              />
+                          </label>
+
                           <div className="flex items-center gap-2 mb-3 bg-gray-800 p-2 rounded border border-gray-700">
                               <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              <input type="text" placeholder="Pega el link de la imagen..." value={currentPage.config.imageSrc || ''} onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)} className="bg-transparent text-sm text-white w-full focus:outline-none" />
+                              <input type="text" placeholder="O pega el link aquí..." value={currentPage.config.imageSrc || ''} onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)} className="bg-transparent text-sm text-gray-400 w-full focus:outline-none" />
+                          </div>
+                          
+                          <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase">Opacidad de la Imagen</label>
+                          <div className="flex items-center gap-2 bg-gray-800 p-2 rounded border border-gray-700">
+                              <Droplets className="w-4 h-4 text-gray-500" />
+                              <input type="range" min="0" max="1" step="0.05" value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1} onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
                           </div>
                       </ControlPanel>
                     )}
@@ -338,6 +398,7 @@ export default function EditorLayout() {
                 </div>
             )}
 
+            {/* TAB 4: IMPRENTA */}
             {activeTab === 'print' && sidebarOpen && (
                 <div className="px-4">
                     <div className="bg-emerald-900/40 border border-emerald-800 p-4 rounded-lg mb-4">
@@ -370,7 +431,9 @@ export default function EditorLayout() {
           </button>
         </div>
 
+        {/* ÁREA DE TRABAJO CENTRAL (PANTALLA) */}
         <div className="flex-1 flex flex-col relative overflow-auto bg-gray-300 z-0 items-center">
+            
             <div className="flex items-center gap-2 mt-6 print:hidden bg-white p-1 rounded-lg shadow-sm z-10">
                 <button onClick={() => setEditorViewMode('spread')} className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'spread' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><BookOpen className="w-4 h-4" /> Pliego Unido</button>
                 <button onClick={() => setEditorViewMode('split')} className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'split' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><FileDigit className="w-4 h-4" /> Páginas Separadas</button>
@@ -383,6 +446,7 @@ export default function EditorLayout() {
             </div>
         </div>
 
+        {/* MENÚ LATERAL DERECHO (ÍNDICE DE PÁGINAS) */}
         <div className="w-64 bg-white border-l border-gray-300 flex flex-col shadow-2xl z-10 shrink-0">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                 <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2"><FileCheck className="w-4 h-4 text-emerald-600" />Índice</h3>
