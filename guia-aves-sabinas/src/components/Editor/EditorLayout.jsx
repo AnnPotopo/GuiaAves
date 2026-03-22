@@ -3,16 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Menu, Upload, Save, ArrowLeft, FileText,
     Square, Palette, Layers3, Droplets, AlignCenter, Layout,
-    Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon
+    Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import PageRenderer from './PageRenderer';
 
-// ==========================================
-// COMPONENTES AUXILIARES
-// ==========================================
 const ControlPanel = ({ children, title }) => (
     <div className="border-t border-gray-800 pt-4 mt-4 px-4">
         <p className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-3">{title}</p>
@@ -42,25 +39,19 @@ const TextInput = ({ label, value, onChange, isTextArea }) => (
     </div>
 );
 
-// ==========================================
-// COMPONENTE PRINCIPAL: EDITOR LAYOUT
-// ==========================================
 export default function EditorLayout() {
     const { bookId } = useParams();
     const navigate = useNavigate();
 
-    // Estados de interfaz
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [activeTab, setActiveTab] = useState('pages');
     const [isSaving, setIsSaving] = useState(false);
 
-    // Estado Global del Libro
     const [bookTitle, setBookTitle] = useState("Cargando...");
-    const [bookSize, setBookSize] = useState("standard"); // NUEVO: Estado para el tamaño
+    const [bookSize, setBookSize] = useState("standard");
     const [pages, setPages] = useState([]);
     const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
-    // 1. CARGAR DATOS DESDE FIREBASE
     useEffect(() => {
         const loadBookFromFirebase = async () => {
             if (!bookId) return;
@@ -71,7 +62,7 @@ export default function EditorLayout() {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     setBookTitle(data.titulo || "Sin título");
-                    setBookSize(data.bookSize || "standard"); // Carga el tamaño guardado
+                    setBookSize(data.bookSize || "standard");
                     setPages(data.paginas || []);
                 } else {
                     alert("No se encontró este libro en la base de datos.");
@@ -80,13 +71,11 @@ export default function EditorLayout() {
                 console.error("Error al cargar el libro:", error);
             }
         };
-
         loadBookFromFirebase();
     }, [bookId]);
 
     const currentPage = pages[currentPageIndex] || null;
 
-    // 2. FUNCIONES DE EDICIÓN Y GESTIÓN DE PÁGINAS
     const updateCurrentPageConfig = (key, value) => {
         setPages(prevPages => {
             const newPages = [...prevPages];
@@ -161,18 +150,16 @@ export default function EditorLayout() {
         e.target.value = null;
     };
 
-    // 3. GUARDAR EN FIREBASE
     const handleSave = async () => {
         setIsSaving(true);
         try {
             const docRef = doc(db, "libros", bookId);
             await setDoc(docRef, {
                 titulo: bookTitle,
-                bookSize: bookSize, // Guarda el tamaño elegido en la nube
+                bookSize: bookSize,
                 paginas: pages,
                 fechaActualizacion: new Date().toLocaleDateString()
             }, { merge: true });
-
             alert(`¡Libro guardado en la nube con éxito!`);
         } catch (error) {
             console.error("Error al guardar en Firebase:", error);
@@ -182,16 +169,12 @@ export default function EditorLayout() {
         }
     };
 
-    // ==========================================
-    // RENDERIZADO DE LA INTERFAZ
-    // ==========================================
     return (
         <div className="flex h-screen bg-gray-200 overflow-hidden font-sans">
 
-            {/* MENÚ LATERAL IZQUIERDO */}
-            <div className={`bg-[#111827] text-gray-300 transition-all duration-300 flex flex-col ${sidebarOpen ? 'w-[320px]' : 'w-16'}`}>
+            {/* MENÚ LATERAL IZQUIERDO (HERRAMIENTAS) */}
+            <div className={`bg-[#111827] text-gray-300 transition-all duration-300 flex flex-col z-20 ${sidebarOpen ? 'w-[320px]' : 'w-16'}`}>
 
-                {/* Header del Sidebar */}
                 <div className="flex flex-col border-b border-gray-800">
                     <div className="flex items-center justify-between p-4">
                         {sidebarOpen && <button onClick={() => navigate('/')} className="hover:text-white flex items-center text-sm"><ArrowLeft className="w-4 h-4 mr-2" /> Volver</button>}
@@ -214,7 +197,6 @@ export default function EditorLayout() {
                     )}
                 </div>
 
-                {/* Tabs de navegación */}
                 {sidebarOpen && (
                     <div className="flex border-b border-gray-800 text-[11px] font-bold tracking-wider shrink-0">
                         <button onClick={() => setActiveTab('pages')} className={`flex-1 p-3 flex flex-col items-center gap-1 ${activeTab === 'pages' ? 'bg-gray-800 text-white' : 'hover:bg-gray-800'}`}>
@@ -229,14 +211,11 @@ export default function EditorLayout() {
                     </div>
                 )}
 
-                {/* Contenedor scrolleable de herramientas */}
                 <div className="flex flex-col flex-1 py-4 overflow-y-auto custom-scrollbar">
 
                     {/* ================= TAB 1: PÁGINAS ================= */}
                     {activeTab === 'pages' && (
                         <div className={`${!sidebarOpen && 'flex flex-col items-center'} px-3`}>
-
-                            {/* NUEVO: Configuración Global del Libro */}
                             <div className="mb-6 border-b border-gray-800 pb-4">
                                 <p className={`text-xs uppercase tracking-wider text-gray-500 font-bold mb-3 ${!sidebarOpen && 'hidden'}`}>Formato del Libro</p>
                                 {sidebarOpen && (
@@ -352,7 +331,6 @@ export default function EditorLayout() {
                                         <button onClick={() => updateCurrentPageConfig('imagePosition', 'right')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.imagePosition === 'right' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Foto Derecha</button>
                                     </div>
 
-                                    {/* NUEVO: Checkbox para ocultar círculo */}
                                     <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer mt-2 bg-gray-800 p-2 rounded border border-gray-700">
                                         <input
                                             type="checkbox"
@@ -362,6 +340,39 @@ export default function EditorLayout() {
                                         />
                                         Mostrar círculo en la esquina
                                     </label>
+                                </ControlPanel>
+                            )}
+
+                            {/* NUEVO: Control de Formato Individual por Campo */}
+                            {currentPage.tipo === 'ave' && (
+                                <ControlPanel title="Formato de Campos (Sangría vs Bloque)">
+                                    <p className="text-[10px] text-gray-500 mb-3 -mt-2">Elige si el texto va junto al icono o debajo de él.</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { id: 'orden', label: 'Orden' },
+                                            { id: 'familia', label: 'Familia' },
+                                            { id: 'longitud', label: 'Longitud' },
+                                            { id: 'nom059', label: 'NOM 059' },
+                                            { id: 'iucn', label: 'IUCN' },
+                                            { id: 'habitat', label: 'Hábitat' },
+                                            { id: 'alimentacion', label: 'Alim.' },
+                                            { id: 'canto', label: 'Canto' },
+                                            { id: 'dimorfismo', label: 'Dimorf.' },
+                                            { id: 'descripcion', label: 'Desc.' }
+                                        ].map(f => (
+                                            <label key={f.id} className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
+                                                <span className="mb-1 text-gray-300 font-semibold truncate">{f.label}</span>
+                                                <select
+                                                    value={currentPage.config[`block_${f.id}`] !== undefined ? (currentPage.config[`block_${f.id}`] ? 'block' : 'inline') : (f.id === 'descripcion' ? 'block' : 'inline')}
+                                                    onChange={(e) => updateCurrentPageConfig(`block_${f.id}`, e.target.value === 'block')}
+                                                    className="bg-gray-900 border border-gray-600 rounded text-[10px] p-1 text-white focus:outline-none"
+                                                >
+                                                    <option value="inline">Lado (Sangría)</option>
+                                                    <option value="block">Abajo (Bloque)</option>
+                                                </select>
+                                            </label>
+                                        ))}
+                                    </div>
                                 </ControlPanel>
                             )}
 
@@ -409,20 +420,10 @@ export default function EditorLayout() {
                                     </>
                                 )}
                             </ControlPanel>
-
-                            {currentPage.tipo === 'portada' && (
-                                <ControlPanel title="Alineación Título">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={() => updateCurrentPageConfig('layout', 'left')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.layout !== 'center' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Abajo Izq.</button>
-                                        <button onClick={() => updateCurrentPageConfig('layout', 'center')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.layout === 'center' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}><AlignCenter className="w-4 h-4 mr-2" /> Centro</button>
-                                    </div>
-                                </ControlPanel>
-                            )}
                         </div>
                     )}
                 </div>
 
-                {/* Botón Guardar Nube */}
                 <button
                     onClick={handleSave}
                     disabled={isSaving}
@@ -433,30 +434,50 @@ export default function EditorLayout() {
                 </button>
             </div>
 
-            {/* ÁREA DE TRABAJO */}
-            <div className="flex-1 flex flex-col relative overflow-auto">
-                <div className="min-h-full p-8 flex flex-col items-center justify-center print:p-0 print:bg-white">
+            {/* ÁREA DE TRABAJO CENTRAL */}
+            <div className="flex-1 flex flex-col relative overflow-auto bg-gray-300 print:bg-white z-0">
+                <div className="min-h-full p-8 flex flex-col items-center justify-center print:p-0">
 
-                    {/* Navegador de páginas (Burbujas) */}
-                    <div className="flex flex-wrap justify-center gap-2 mb-6 bg-white p-2 rounded-full shadow print:hidden max-w-3xl">
-                        {pages.map((p, idx) => (
-                            <button
-                                key={p.id}
-                                onClick={() => setCurrentPageIndex(idx)}
-                                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition ${idx === currentPageIndex ? 'bg-gray-900 text-white scale-110 shadow-lg' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
-                            >
-                                {idx + 1}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Renderizador de la página */}
-                    <div className="transition-all duration-300 transform scale-100 origin-center print:scale-100">
-                        {/* Le pasamos el bookSize al renderizador */}
+                    <div className="transition-all duration-300 transform scale-100 origin-center print:scale-100 shadow-2xl">
                         <PageRenderer pageData={pages[currentPageIndex]} bookSize={bookSize} />
                     </div>
 
-                    <p className="text-xs text-gray-500 mt-6 print:hidden">Libro: {bookTitle} | Página {currentPageIndex + 1} de {pages.length}</p>
+                    <p className="text-xs text-gray-500 mt-6 print:hidden font-mono bg-white/50 px-3 py-1 rounded">Libro: {bookTitle} | Formato: {bookSize}</p>
+                </div>
+            </div>
+
+            {/* NUEVO: MENÚ LATERAL DERECHO (ÍNDICE DE PÁGINAS) */}
+            <div className="w-64 bg-white border-l border-gray-300 flex flex-col shadow-2xl print:hidden z-10 shrink-0">
+                <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                    <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2">
+                        <FileCheck className="w-4 h-4 text-emerald-600" />
+                        Índice
+                    </h3>
+                    <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded-full">{pages.length}</span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 bg-gray-100">
+                    {pages.map((p, idx) => {
+                        // Definimos un nombre amigable para la lista dependiendo del tipo de página
+                        let pageName = p.tipo;
+                        if (p.tipo === 'ave') pageName = p.config.nombreComun || 'Ave sin nombre';
+                        if (p.tipo === 'portada') pageName = p.config.titulo || 'Portada';
+
+                        return (
+                            <button
+                                key={p.id}
+                                onClick={() => setCurrentPageIndex(idx)}
+                                className={`w-full text-left flex flex-col p-3 rounded-lg transition border ${idx === currentPageIndex ? 'bg-emerald-50 border-emerald-500 shadow-sm' : 'bg-white border-gray-200 hover:border-emerald-300 hover:shadow'}`}
+                            >
+                                <span className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${idx === currentPageIndex ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                    Pág. {idx + 1} • {p.tipo}
+                                </span>
+                                <span className="text-sm font-semibold text-gray-800 capitalize truncate">
+                                    {pageName}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
