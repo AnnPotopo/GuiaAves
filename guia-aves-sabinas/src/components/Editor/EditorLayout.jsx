@@ -39,19 +39,17 @@ export default function EditorLayout() {
   const [activeTab, setActiveTab] = useState('pages');
   const [isSaving, setIsSaving] = useState(false);
   
-  // NUEVO: ESTADO PARA CONTROLAR LA VISTA EN PANTALLA
-  const [editorViewMode, setEditorViewMode] = useState('spread'); // 'spread' (Pliego) | 'split' (Páginas sueltas)
+  const [editorViewMode, setEditorViewMode] = useState('spread');
 
   const [bookTitle, setBookTitle] = useState("Cargando...");
   const [bookSize, setBookSize] = useState("trade"); 
   const [pages, setPages] = useState([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
-  // Estas opciones controlan EXCLUSIVAMENTE lo que se exporta al imprimir
   const [printSettings, setPrintSettings] = useState({
       showBleed: false,
       showMargins: false,
-      splitPages: true, // La imprenta exige la tripa en páginas sueltas
+      splitPages: true,
       cropMarks: true,
       slugInfo: true
   });
@@ -100,7 +98,7 @@ export default function EditorLayout() {
   };
 
   const handleAddPage = (tipo) => {
-    const newPage = { id: Date.now().toString(), tipo: tipo, config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000' } };
+    const newPage = { id: Date.now().toString(), tipo: tipo, config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm' } };
     setPages([...pages, newPage]);
     setCurrentPageIndex(pages.length); 
     setActiveTab(tipo === 'blanco' || tipo === 'foto' ? 'design' : 'content'); 
@@ -115,7 +113,7 @@ export default function EditorLayout() {
       const newPagesFromExcel = data.map((row, index) => ({
         id: `excel-${Date.now()}-${index}`, tipo: 'ave',
         config: {
-          backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000',
+          backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm',
           nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '',
           nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
           orden: row['Orden'] || '', familia: row['Familia'] || '', iucn: row['Estado de conservación (IUCN)'] || '', nom059: row['Estado de conservación (NOM 059)'] || '',
@@ -148,10 +146,8 @@ export default function EditorLayout() {
 
   return (
     <>
-      {/* 1. EDITOR UI EN PANTALLA (SE OCULTA TOTALMENTE AL IMPRIMIR) */}
       <div className="flex h-screen bg-gray-200 overflow-hidden font-sans print:hidden">
         
-        {/* MENÚ LATERAL IZQUIERDO */}
         <div className={`bg-[#111827] text-gray-300 transition-all duration-300 flex flex-col z-20 ${sidebarOpen ? 'w-[320px]' : 'w-16'}`}>
           <div className="flex flex-col border-b border-gray-800">
               <div className="flex items-center justify-between p-4">
@@ -177,7 +173,6 @@ export default function EditorLayout() {
 
           <div className="flex flex-col flex-1 py-4 overflow-y-auto custom-scrollbar">
             
-            {/* TAB 1: PÁGINAS */}
             {activeTab === 'pages' && (
                <div className={`${!sidebarOpen && 'flex flex-col items-center'} px-3`}>
                   <div className="mb-6 border-b border-gray-800 pb-4">
@@ -205,7 +200,6 @@ export default function EditorLayout() {
               </div>
             )}
 
-            {/* TAB 2: CONTENIDO */}
             {activeTab === 'content' && sidebarOpen && currentPage && (
                 <div className="px-4">
                     <div className="mb-4 bg-gray-800 p-3 rounded flex justify-between items-center">
@@ -232,13 +226,45 @@ export default function EditorLayout() {
                 </div>
             )}
 
-            {/* TAB 3: DISEÑO */}
             {activeTab === 'design' && sidebarOpen && currentPage && (
                 <div>
                     <div className="px-4 mb-2 flex justify-between items-center bg-gray-800 p-3 mx-4 rounded">
                         <div><p className="text-[10px] text-gray-400 uppercase">Editando Estilos</p><p className="font-bold text-white capitalize">Pág. {currentPageIndex + 1}: {currentPage.tipo}</p></div>
                         <button onClick={handleDeletePage} className="text-red-400 hover:text-red-300 bg-red-400/10 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
                     </div>
+
+                    {/* NUEVO PANEL: TIPOGRAFÍA Y MÁRGENES EDITORIALES */}
+                    <ControlPanel title="Tipografía y Diseño de Página">
+                        <div className="grid grid-cols-1 gap-3">
+                            <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
+                                <span className="mb-1 text-gray-300 font-semibold">Fuente (Tipografía)</span>
+                                <select value={currentPage.config.fontFamily || 'system-ui, sans-serif'} onChange={(e) => updateCurrentPageConfig('fontFamily', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                    <option value="system-ui, sans-serif">Moderna (Sans-Serif)</option>
+                                    <option value="'Georgia', serif">Clásica Editorial (Serif)</option>
+                                    <option value="'Courier New', monospace">Técnica (Monospace)</option>
+                                </select>
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
+                                    <span className="mb-1 text-gray-300 font-semibold">Tamaño Letra</span>
+                                    <select value={currentPage.config.fontSize || '11pt'} onChange={(e) => updateCurrentPageConfig('fontSize', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                        <option value="9pt">9pt (Pequeño)</option>
+                                        <option value="10pt">10pt (Estándar)</option>
+                                        <option value="11pt">11pt (Cómodo)</option>
+                                        <option value="12pt">12pt (Grande)</option>
+                                    </select>
+                                </label>
+                                <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
+                                    <span className="mb-1 text-gray-300 font-semibold">Márgenes</span>
+                                    <select value={currentPage.config.marginSize || '15mm'} onChange={(e) => updateCurrentPageConfig('marginSize', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                        <option value="10mm">10mm (Estrecho)</option>
+                                        <option value="15mm">15mm (Estándar)</option>
+                                        <option value="20mm">20mm (Amplio)</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                    </ControlPanel>
 
                     {currentPage.tipo === 'ave' && (
                          <ControlPanel title="Posición del Título">
@@ -312,7 +338,6 @@ export default function EditorLayout() {
                 </div>
             )}
 
-            {/* TAB 4: IMPRENTA (INDESIGN STYLE) */}
             {activeTab === 'print' && sidebarOpen && (
                 <div className="px-4">
                     <div className="bg-emerald-900/40 border border-emerald-800 p-4 rounded-lg mb-4">
@@ -345,39 +370,19 @@ export default function EditorLayout() {
           </button>
         </div>
 
-        {/* ÁREA DE TRABAJO CENTRAL (PANTALLA) */}
         <div className="flex-1 flex flex-col relative overflow-auto bg-gray-300 z-0 items-center">
-            
-            {/* NUEVO: CONTROLES DE VISTA DE EDITOR */}
             <div className="flex items-center gap-2 mt-6 print:hidden bg-white p-1 rounded-lg shadow-sm z-10">
-                <button 
-                    onClick={() => setEditorViewMode('spread')}
-                    className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'spread' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-                >
-                    <BookOpen className="w-4 h-4" /> Pliego Unido
-                </button>
-                <button 
-                    onClick={() => setEditorViewMode('split')}
-                    className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'split' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-                >
-                    <FileDigit className="w-4 h-4" /> Páginas Separadas
-                </button>
+                <button onClick={() => setEditorViewMode('spread')} className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'spread' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><BookOpen className="w-4 h-4" /> Pliego Unido</button>
+                <button onClick={() => setEditorViewMode('split')} className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'split' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><FileDigit className="w-4 h-4" /> Páginas Separadas</button>
             </div>
 
             <div className="min-h-full p-8 flex flex-col items-center justify-center">
                  <div className="transition-all duration-300 transform scale-100 origin-center">
-                    {/* Al renderizar en pantalla pasamos el editorViewMode, y le decimos que NO es modo impresión */}
-                    <PageRenderer 
-                        pageData={pages[currentPageIndex]} 
-                        bookSize={bookSize} 
-                        printSettings={{ ...printSettings, splitPages: editorViewMode === 'split' }} 
-                        isPrintMode={false} 
-                    />
+                    <PageRenderer pageData={pages[currentPageIndex]} bookSize={bookSize} printSettings={{ ...printSettings, splitPages: editorViewMode === 'split' }} isPrintMode={false} />
                  </div>
             </div>
         </div>
 
-        {/* MENÚ LATERAL DERECHO (ÍNDICE DE PÁGINAS) */}
         <div className="w-64 bg-white border-l border-gray-300 flex flex-col shadow-2xl z-10 shrink-0">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                 <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2"><FileCheck className="w-4 h-4 text-emerald-600" />Índice</h3>
@@ -399,7 +404,6 @@ export default function EditorLayout() {
         </div>
       </div>
 
-      {/* 2. MOTOR DE IMPRESIÓN (OCULTO HASTA PRESIONAR IMPRIMIR) */}
       <PrintEngine pages={pages} bookSize={bookSize} printSettings={printSettings} bookTitle={bookTitle} />
     </>
   );
