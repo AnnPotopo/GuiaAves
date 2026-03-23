@@ -4,7 +4,8 @@ import {
   Menu, Upload, Save, ArrowLeft, FileText, 
   Square, Palette, Layers3, Droplets, AlignCenter, Layout, 
   Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck, Printer, AlertTriangle, BookOpen, FileDigit,
-  Maximize, MoveHorizontal, MoveVertical, Loader2, FolderPlus, Settings2
+  Maximize, MoveHorizontal, MoveVertical, Loader2, FolderPlus, Settings2,
+  ChevronUp, ChevronDown, GripVertical // NUEVOS ICONOS PARA REORGANIZAR
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -43,17 +44,19 @@ export default function EditorLayout() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   
-  const [editorViewMode, setEditorViewMode] = useState('spread'); // spread, split, imposed
+  const [editorViewMode, setEditorViewMode] = useState('spread');
 
   const [bookTitle, setBookTitle] = useState("Cargando...");
   const [bookSize, setBookSize] = useState("trade"); 
   const [pages, setPages] = useState([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  
+  // NUEVO: Estado para arrastrar y soltar
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
-  // NUEVO: SISTEMA DE GRUPOS Y NUMERACIÓN
   const [bookGroups, setBookGroups] = useState([{ id: 'default', name: 'Libro Principal' }]);
   const [showPageNumbers, setShowPageNumbers] = useState(true);
-  const [signatureSize, setSignatureSize] = useState(16); // Páginas por cuadernillo
+  const [signatureSize, setSignatureSize] = useState(16); 
 
   const [printSettings, setPrintSettings] = useState({
       showBleed: false,
@@ -87,7 +90,6 @@ export default function EditorLayout() {
     loadBookFromFirebase();
   }, [bookId]);
 
-  // CALCULAR NÚMEROS DE PÁGINA GLOBALES
   const pagesWithNumbers = React.useMemo(() => {
       let currentNum = 1;
       return pages.map(p => {
@@ -110,13 +112,64 @@ export default function EditorLayout() {
 
   const updatePrintSettings = (key, value) => setPrintSettings(prev => ({ ...prev, [key]: value }));
 
-  // GESTIÓN DE GRUPOS
   const handleAddGroup = () => {
       setBookGroups([...bookGroups, { id: `g_${Date.now()}`, name: 'Nuevo Grupo' }]);
   };
 
   const handleUpdateGroupName = (id, newName) => {
       setBookGroups(bookGroups.map(g => g.id === id ? { ...g, name: newName } : g));
+  };
+
+  // NUEVO: FUNCIONES DE REORDENAMIENTO DE PÁGINAS
+  const movePageUp = (index) => {
+      if (index === 0) return;
+      const newPages = [...pages];
+      const temp = newPages[index - 1];
+      newPages[index - 1] = newPages[index];
+      newPages[index] = temp;
+      setPages(newPages);
+      setCurrentPageIndex(index - 1);
+  };
+
+  const movePageDown = (index) => {
+      if (index === pages.length - 1) return;
+      const newPages = [...pages];
+      const temp = newPages[index + 1];
+      newPages[index + 1] = newPages[index];
+      newPages[index] = temp;
+      setPages(newPages);
+      setCurrentPageIndex(index + 1);
+  };
+
+  // NUEVO: LÓGICA DE DRAG AND DROP
+  const handleDragStart = (e, index) => {
+      setDraggedIndex(index);
+      e.dataTransfer.effectAllowed = "move";
+      setTimeout(() => e.target.classList.add("opacity-50"), 0);
+  };
+
+  const handleDragEnd = (e) => {
+      e.target.classList.remove("opacity-50");
+      setDraggedIndex(null);
+  };
+
+  const handleDragOver = (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e, targetIndex) => {
+      e.preventDefault();
+      if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+      const newPages = [...pages];
+      const draggedPage = newPages[draggedIndex];
+      newPages.splice(draggedIndex, 1);
+      newPages.splice(targetIndex, 0, draggedPage);
+
+      setPages(newPages);
+      setCurrentPageIndex(targetIndex);
+      setDraggedIndex(null);
   };
 
   const handleDeletePage = () => {
@@ -130,7 +183,7 @@ export default function EditorLayout() {
   };
 
   const handleAddPage = (tipo) => {
-    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm' } };
+    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm' } };
     setPages([...pages, newPage]);
     setCurrentPageIndex(pages.length); 
     setActiveTab(tipo === 'blanco' || tipo === 'foto' ? 'design' : 'content'); 
@@ -146,7 +199,7 @@ export default function EditorLayout() {
         id: `excel-${Date.now()}-${index}`, tipo: 'ave',
         config: {
           groupId: 'default',
-          backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm',
+          backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm',
           nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '',
           nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
           orden: row['Orden'] || '', familia: row['Familia'] || '', iucn: row['Estado de conservación (IUCN)'] || '', nom059: row['Estado de conservación (NOM 059)'] || '',
@@ -183,29 +236,19 @@ export default function EditorLayout() {
 
     setIsUploadingImage(true);
     try {
-        // Opciones estrictas de compresión
         const options = { 
-            maxSizeMB: 2.0,           // Límite estricto de 2 MB
-            maxWidthOrHeight: 2700,   // Resolución ideal para 6x9 a 300 DPI
+            maxSizeMB: 2.0, 
+            maxWidthOrHeight: 2700, 
             useWebWorker: true,
-            fileType: 'image/jpeg',   // FORZAMOS a JPG (destruye el peso extra de los PNG)
-            initialQuality: 0.85      // Compresión al 85% (calidad visual idéntica)
+            fileType: 'image/jpeg', 
+            initialQuality: 0.85 
         };
-        
-        // El navegador comprime la foto
         const compressedFile = await imageCompression(file, options);
-        
-        // Cambiamos el nombre para asegurar que termine en .jpg
         const fileName = `${Date.now()}_comprimida.jpg`;
         const storageRef = ref(storage, `libros/${bookId}/${fileName}`);
-        
         await uploadBytes(storageRef, compressedFile);
         const downloadURL = await getDownloadURL(storageRef);
         updateCurrentPageConfig('imageSrc', downloadURL);
-        
-        console.log(`Foto original: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-        console.log(`Foto comprimida: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-
     } catch (error) {
         console.error("Error al procesar/subir imagen:", error);
         alert("Ocurrió un error al procesar tu foto. Revisa la consola.");
@@ -215,7 +258,6 @@ export default function EditorLayout() {
     }
   };
 
-  // MOTOR DE IMPOSICIÓN (Calcula el orden físico para los cuadernillos)
   const getImposedSpreads = () => {
       const phys = [];
       pagesWithNumbers.forEach(p => {
@@ -350,10 +392,18 @@ export default function EditorLayout() {
                                 <span className="mb-1 text-gray-300 font-semibold">Fuente (Tipografía)</span>
                                 <select value={currentPage.config.fontFamily || 'system-ui, sans-serif'} onChange={(e) => updateCurrentPageConfig('fontFamily', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
                                     <option value="system-ui, sans-serif">Moderna (Sans-Serif)</option>
-                                    <option value="'Georgia', serif">Clásica Editorial (Serif)</option>
-                                    <option value="'Courier New', monospace">Técnica (Monospace)</option>
+                                    <option value="'Arial', sans-serif">Arial</option>
+                                    <option value="'Helvetica', sans-serif">Helvetica</option>
+                                    <option value="'Verdana', sans-serif">Verdana</option>
+                                    <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                                    <option value="'Georgia', serif">Clásica Editorial (Georgia)</option>
+                                    <option value="'Times New Roman', serif">Times New Roman</option>
+                                    <option value="'Garamond', serif">Garamond</option>
+                                    <option value="'Courier New', monospace">Técnica (Courier New)</option>
                                 </select>
                             </label>
+                            
+                            {/* NUEVO: Controles de Tamaño e Interlineado (Line Height) juntos */}
                             <div className="grid grid-cols-2 gap-2">
                                 <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
                                     <span className="mb-1 text-gray-300 font-semibold">Tamaño Letra</span>
@@ -365,14 +415,23 @@ export default function EditorLayout() {
                                     </select>
                                 </label>
                                 <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
-                                    <span className="mb-1 text-gray-300 font-semibold">Márgenes</span>
-                                    <select value={currentPage.config.marginSize || '15mm'} onChange={(e) => updateCurrentPageConfig('marginSize', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
-                                        <option value="10mm">10mm (Estrecho)</option>
-                                        <option value="15mm">15mm (Estándar)</option>
-                                        <option value="20mm">20mm (Amplio)</option>
+                                    <span className="mb-1 text-gray-300 font-semibold">Interlineado</span>
+                                    <select value={currentPage.config.lineHeight || '1.625'} onChange={(e) => updateCurrentPageConfig('lineHeight', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                        <option value="1.2">Compacto (1.2)</option>
+                                        <option value="1.5">Normal (1.5)</option>
+                                        <option value="1.625">Relajado (1.6)</option>
+                                        <option value="2">Doble (2.0)</option>
                                     </select>
                                 </label>
                             </div>
+                            <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
+                                <span className="mb-1 text-gray-300 font-semibold">Márgenes</span>
+                                <select value={currentPage.config.marginSize || '15mm'} onChange={(e) => updateCurrentPageConfig('marginSize', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                    <option value="10mm">10mm (Estrecho)</option>
+                                    <option value="15mm">15mm (Estándar)</option>
+                                    <option value="20mm">20mm (Amplio)</option>
+                                </select>
+                            </label>
                         </div>
                     </ControlPanel>
 
@@ -567,7 +626,7 @@ export default function EditorLayout() {
             </div>
         </div>
 
-        {/* MENÚ LATERAL DERECHO (ÍNDICE Y GRUPOS) */}
+        {/* MENÚ LATERAL DERECHO (ÍNDICE Y GRUPOS CON DRAG & DROP) */}
         <div className="w-64 bg-white border-l border-gray-300 flex flex-col shadow-2xl z-10 shrink-0">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                 <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2"><FileCheck className="w-4 h-4 text-emerald-600" />Índice</h3>
@@ -594,11 +653,30 @@ export default function EditorLayout() {
                                     if (p.tipo === 'ave') pageName = p.config.nombreComun || 'Ave sin nombre';
                                     if (p.tipo === 'portada') pageName = p.config.titulo || 'Portada';
                                     const pageRange = p._numPages > 1 ? `${p._startPageNum}-${p._startPageNum + p._numPages - 1}` : p._startPageNum;
+                                    
+                                    // Renderizado de la ficha con Drag & Drop y botones Arriba/Abajo
                                     return (
-                                        <button key={p.id} onClick={() => {setCurrentPageIndex(p.originalIndex); setEditorViewMode(editorViewMode === 'imposed' ? 'spread' : editorViewMode);}} className={`w-full text-left flex flex-col px-2 py-1.5 rounded transition border ${p.originalIndex === currentPageIndex && editorViewMode !== 'imposed' ? 'bg-emerald-50 border-emerald-500' : 'bg-transparent border-transparent hover:bg-gray-50'}`}>
-                                            <span className={`text-[9px] font-bold tracking-wider ${p.originalIndex === currentPageIndex && editorViewMode !== 'imposed' ? 'text-emerald-600' : 'text-gray-400'}`}>Pág. {pageRange} • {p.tipo}</span>
-                                            <span className="text-xs font-semibold text-gray-700 capitalize truncate">{pageName}</span>
-                                        </button>
+                                        <div 
+                                            key={p.id} 
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, p.originalIndex)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, p.originalIndex)}
+                                            onDragEnd={handleDragEnd}
+                                            className={`flex items-center w-full bg-white rounded-lg transition border ${p.originalIndex === currentPageIndex && editorViewMode !== 'imposed' ? 'bg-emerald-50 border-emerald-500 shadow-sm' : 'border-transparent hover:border-emerald-300 hover:shadow'}`}
+                                        >
+                                            <div className="cursor-grab text-gray-400 hover:text-gray-600 pl-2 pr-1 py-3" title="Arrastrar para mover">
+                                                <GripVertical className="w-4 h-4"/>
+                                            </div>
+                                            <button onClick={() => {setCurrentPageIndex(p.originalIndex); setEditorViewMode(editorViewMode === 'imposed' ? 'spread' : editorViewMode);}} className="flex-1 text-left flex flex-col py-2 overflow-hidden">
+                                                <span className={`text-[9px] font-bold tracking-wider mb-0.5 ${p.originalIndex === currentPageIndex && editorViewMode !== 'imposed' ? 'text-emerald-600' : 'text-gray-400'}`}>Pág. {pageRange} • {p.tipo}</span>
+                                                <span className="text-xs font-semibold text-gray-700 capitalize truncate w-full block">{pageName}</span>
+                                            </button>
+                                            <div className="flex flex-col gap-0 border-l border-gray-100 px-1 py-1">
+                                                <button onClick={(e) => { e.stopPropagation(); movePageUp(p.originalIndex); }} disabled={p.originalIndex === 0} className="text-gray-400 hover:text-emerald-600 disabled:opacity-30 p-0.5" title="Mover Arriba"><ChevronUp className="w-4 h-4"/></button>
+                                                <button onClick={(e) => { e.stopPropagation(); movePageDown(p.originalIndex); }} disabled={p.originalIndex === pages.length - 1} className="text-gray-400 hover:text-emerald-600 disabled:opacity-30 p-0.5" title="Mover Abajo"><ChevronDown className="w-4 h-4"/></button>
+                                            </div>
+                                        </div>
                                     );
                                 })}
                             </div>
@@ -609,7 +687,7 @@ export default function EditorLayout() {
         </div>
       </div>
 
-      {/* MOTOR DE IMPRESIÓN (Soporta Imposición de Cuadernillos) */}
+      {/* MOTOR DE IMPRESIÓN */}
       {editorViewMode === 'imposed' ? (
           <div className="hidden print:block w-full bg-white m-0 p-0 z-[9999] absolute top-0 left-0">
              <style dangerouslySetInnerHTML={{__html: `@media print { @page { margin: 0 !important; size: auto; } body, html { margin: 0 !important; padding: 0 !important; background-color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}} />

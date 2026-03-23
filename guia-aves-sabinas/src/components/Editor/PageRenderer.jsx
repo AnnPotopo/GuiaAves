@@ -4,11 +4,12 @@ import {
   Info, ShieldAlert, Utensils, Activity, ListTree 
 } from 'lucide-react';
 
-const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock }) => {
+const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock, lineHeight }) => {
   if (!value) return null;
 
   return (
-    <div className={`flex items-start gap-3 leading-relaxed ${isBlock ? 'flex-col gap-1.5' : ''}`} style={{ fontSize: '0.95em' }}>
+    // Reemplazamos la clase estática "leading-relaxed" por nuestro lineHeight dinámico
+    <div className={`flex items-start gap-3 ${isBlock ? 'flex-col gap-1.5' : ''}`} style={{ fontSize: '0.95em', lineHeight: lineHeight || '1.625' }}>
       {!isBlock ? (
         <>
           <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: iconColor || '#3b82f6' }} />
@@ -78,10 +79,9 @@ const CropMarks = () => (
     </>
 );
 
-// NUEVO COMPONENTE: NUMERADOR DE PÁGINAS
 const PageNumberDisplay = ({ num, show, tipo }) => {
     if (!show || !num || tipo === 'portada') return null;
-    const isRight = num % 2 !== 0; // Imprenta: Impares siempre a la derecha, Pares a la izquierda
+    const isRight = num % 2 !== 0; 
     return (
         <div className={`absolute bottom-6 ${isRight ? 'right-8' : 'left-8'} z-50 text-[10px] font-bold opacity-60`} style={{ fontFamily: 'monospace' }}>
             {num}
@@ -101,7 +101,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const currentDimensions = sizeStyles[bookSize] || sizeStyles.trade;
   const bookContainerClass = `relative bg-white overflow-hidden ${isPrintMode ? 'break-inside-avoid shadow-none' : 'shadow-2xl rounded-sm flex'}`;
 
-  // HOJAS EN BLANCO GENERADAS POR EL MOTOR DE IMPOSICIÓN (Relleno de cuadernillo)
   if (pageData.isBlankPad) {
       return (
           <div className="break-after-page flex items-center justify-center w-[100vw] min-h-[100vh] bg-white">
@@ -132,6 +131,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const fontFamily = config.fontFamily || 'system-ui, sans-serif';
   const baseFontSize = config.fontSize || '11pt';
   const marginSize = config.marginSize || '15mm';
+  const lineHeight = config.lineHeight || '1.625'; // NUEVO: Interlineado
 
   const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
   const imgScale = config.imageScale || 1;
@@ -248,27 +248,26 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
              <div className={`space-y-2.5 flex-1 overflow-y-auto custom-scrollbar relative z-20 ${titlePosition === 'image' ? 'pt-4' : ''}`}>
                 <div className="flex flex-col gap-1.5 mb-2">
                     <div className="flex items-start gap-4">
-                        <div className="flex-1"><BirdDetailItem Icon={ListTree} label="Orden" value={config.orden} iconColor={themeColor} isBlock={isBlockField('orden')} /></div>
-                        <div className="flex-1"><BirdDetailItem Icon={Feather} label="Familia" value={config.familia} iconColor={themeColor} isBlock={isBlockField('familia')} /></div>
+                        <div className="flex-1"><BirdDetailItem Icon={ListTree} label="Orden" value={config.orden} iconColor={themeColor} isBlock={isBlockField('orden')} lineHeight={lineHeight} /></div>
+                        <div className="flex-1"><BirdDetailItem Icon={Feather} label="Familia" value={config.familia} iconColor={themeColor} isBlock={isBlockField('familia')} lineHeight={lineHeight} /></div>
                     </div>
-                    <BirdDetailItem Icon={Scale} label="Longitud" value={config.longitud} iconColor={themeColor} isBlock={isBlockField('longitud')} />
+                    <BirdDetailItem Icon={Scale} label="Longitud" value={config.longitud} iconColor={themeColor} isBlock={isBlockField('longitud')} lineHeight={lineHeight} />
                 </div>
 
                 <div className="bg-black/5 p-2 rounded-md space-y-1.5 my-2">
-                  <BirdDetailItem Icon={ShieldAlert} label="NOM 059" value={config.nom059} iconColor={nomColor} isBlock={isBlockField('nom059')} />
-                  <BirdDetailItem Icon={ShieldAlert} label="IUCN" value={config.iucn} iconColor={iucnColor} isBlock={isBlockField('iucn')} />
+                  <BirdDetailItem Icon={ShieldAlert} label="NOM 059" value={config.nom059} iconColor={nomColor} isBlock={isBlockField('nom059')} lineHeight={lineHeight} />
+                  <BirdDetailItem Icon={ShieldAlert} label="IUCN" value={config.iucn} iconColor={iucnColor} isBlock={isBlockField('iucn')} lineHeight={lineHeight} />
                 </div>
 
-                <BirdDetailItem Icon={MapPin} label="Hábitat" value={config.habitat} iconColor={themeColor} isBlock={isBlockField('habitat')} />
-                <BirdDetailItem Icon={Utensils} label="Alimentación" value={config.alimentacion} iconColor={themeColor} isBlock={isBlockField('alimentacion')} />
-                <BirdDetailItem Icon={Mic} label="Canto/Llamado" value={config.canto} iconColor={themeColor} isBlock={isBlockField('canto')} />
-                <BirdDetailItem Icon={Activity} label="Dimorfismo" value={config.dimorfismo} iconColor={themeColor} isBlock={isBlockField('dimorfismo')} />
-                <div className="pt-1"><BirdDetailItem Icon={Info} label="Descripción" value={config.descripcion} iconColor={themeColor} isBlock={isBlockField('descripcion', true)} /></div>
+                <BirdDetailItem Icon={MapPin} label="Hábitat" value={config.habitat} iconColor={themeColor} isBlock={isBlockField('habitat')} lineHeight={lineHeight} />
+                <BirdDetailItem Icon={Utensils} label="Alimentación" value={config.alimentacion} iconColor={themeColor} isBlock={isBlockField('alimentacion')} lineHeight={lineHeight} />
+                <BirdDetailItem Icon={Mic} label="Canto/Llamado" value={config.canto} iconColor={themeColor} isBlock={isBlockField('canto')} lineHeight={lineHeight} />
+                <BirdDetailItem Icon={Activity} label="Dimorfismo" value={config.dimorfismo} iconColor={themeColor} isBlock={isBlockField('dimorfismo')} lineHeight={lineHeight} />
+                <div className="pt-1"><BirdDetailItem Icon={Info} label="Descripción" value={config.descripcion} iconColor={themeColor} isBlock={isBlockField('descripcion', true)} lineHeight={lineHeight} /></div>
              </div>
         </div>
     );
 
-    // MODO IMPOSICIÓN (MEDIA PÁGINA ESPECÍFICA)
     if (forceHalf) {
         const SideContent = forceHalf === 'image' ? ImageSide : DataSide;
         return (
