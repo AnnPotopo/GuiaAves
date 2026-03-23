@@ -35,18 +35,18 @@ const getStatusColor = (type, text) => {
   const s = text.toLowerCase();
   
   if (type === 'nom059') {
-      if (s.includes('extinta') || s === 'e') return '#7f1d1d'; 
-      if (s.includes('peligro') || s === 'p') return '#dc2626'; 
-      if (s.includes('amenazada') || s === 'a') return '#ea580c'; 
-      if (s.includes('protección') || s.includes('proteccion') || s === 'pr') return '#eab308'; 
+      if (s.includes('(e)') || s.includes('extinta')) return '#7f1d1d'; 
+      if (s.includes('(p)') || s.includes('peligro')) return '#dc2626'; 
+      if (s.includes('(a)') || s.includes('amenazada')) return '#ea580c'; 
+      if (s.includes('(pr)') || s.includes('protección') || s.includes('proteccion')) return '#eab308'; 
   }
   if (type === 'iucn') {
-      if (s.includes('crítico') || s.includes('critico') || s.includes('cr')) return '#dc2626'; 
-      if (s.includes('peligro') || s.includes('en')) return '#ea580c'; 
-      if (s.includes('vulnerable') || s.includes('vu')) return '#eab308'; 
-      if (s.includes('casi') || s.includes('nt')) return '#84cc16'; 
-      if (s.includes('menor') || s.includes('lc')) return '#22c55e'; 
-      if (s.includes('extinta') || s.includes('ex') || s.includes('ew')) return '#7f1d1d'; 
+      if (s.includes('(ex)') || s.includes('(ew)') || s.includes('extinta')) return '#7f1d1d'; 
+      if (s.includes('(cr)') || s.includes('crítico') || s.includes('critico')) return '#dc2626'; 
+      if (s.includes('(en)') || s.includes('peligro')) return '#ea580c'; 
+      if (s.includes('(vu)') || s.includes('vulnerable')) return '#eab308'; 
+      if (s.includes('(nt)') || s.includes('casi amenazada')) return '#84cc16'; 
+      if (s.includes('(lc)') || s.includes('preocupación menor')) return '#22c55e'; 
   }
   return '#9ca3af'; 
 };
@@ -121,7 +121,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const textColor = config.textColor || '#1f2937'; 
   const themeColor = config.themeColor || '#3b82f6'; 
   const showCircle = config.showCornerCircle !== false; 
-  const hideTitle = config.hideTitle === true; // NUEVA CONFIGURACIÓN
+  const hideTitle = config.hideTitle === true;
   const titlePosition = config.titlePosition || 'data'; 
   const titleBgColor = config.titleBgColor || '#000000';
   const titleBgOpacity = config.titleBgOpacity !== undefined ? config.titleBgOpacity : 0.6;
@@ -181,6 +181,13 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
           {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
           <PageNumberDisplay num={pageNum} show={showPageNumbers} position={pageNumberPosition} tipo={pageData.tipo} />
           
+          {/* NUEVO: Recuadro de Copyright en la página tipo 'foto' */}
+          {pageData.tipo === 'foto' && config.showCopyright && config.copyrightText && (
+             <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white/90 text-[9px] px-2.5 py-1 rounded-sm z-40 shadow-lg">
+                 {config.copyrightText}
+             </div>
+          )}
+
           {pageData.tipo === 'portada' && (
               <>
                   <div className={`absolute inset-0 flex flex-col z-10 ${isCentered ? 'items-center justify-center text-center' : 'justify-end'}`} style={{ padding: marginSize }}>
@@ -218,7 +225,13 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                     </div>
                 )}
 
-                {/* MODIFICADO: Solo se muestra el título si hideTitle no está activo */}
+                {/* NUEVO: Recuadro de Copyright en el lado de la imagen de 'ave' */}
+                {config.showCopyright && config.copyrightText && (
+                    <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white/90 text-[9px] px-2.5 py-1 rounded-sm z-40 shadow-lg">
+                        {config.copyrightText}
+                    </div>
+                )}
+
                 {!hideTitle && titlePosition === 'image' && (
                     <div className="absolute top-0 left-0 w-full z-20 flex flex-col justify-start" style={{ backgroundColor: hexToRgba(titleBgColor, titleBgOpacity), padding: marginSize }}>
                         <h2 className="text-2xl md:text-3xl font-bold mb-1 text-white">{config.nombreComun || 'Nombre Común'}</h2>
@@ -278,7 +291,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
              <PageNumberDisplay num={pNum} show={showPageNumbers} position={pageNumberPosition} tipo="ave" />
              {showCircle && <div className={`absolute top-0 ${isImageRight && !splitPages && !isPrintMode && !forceHalf ? 'left-0 rounded-br-full' : 'right-0 rounded-bl-full'} w-24 h-24 print:border opacity-80 z-10`} style={{ backgroundColor: themeColor }}></div>}
              
-             {/* MODIFICADO: Solo se muestra el título si hideTitle no está activo */}
              {!hideTitle && titlePosition !== 'image' && (
                  <div className="relative z-20 mb-4 border-b pb-2" style={{ borderColor: `${themeColor}33` }}>
                     <h2 className="text-2xl md:text-3xl font-bold mb-1" style={{color: textColor}}>{config.nombreComun || 'Nombre Común'}</h2>
@@ -316,27 +328,34 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                                 const imgScale = img.scale || 1;
                                 const imgX = img.offsetX || 0;
                                 const imgY = img.offsetY || 0;
-                                const padClass = img.padding || 'mb-4';
+                                const paddingTopClass = img.paddingTop || 'mt-0';
+                                const paddingBottomClass = img.paddingBottom || img.padding || 'mb-4';
                                 const isSideText = img.textMode === 'side';
 
                                 let alignClass = 'items-center';
                                 if (img.align === 'left') alignClass = 'items-start';
                                 if (img.align === 'right') alignClass = 'items-end';
 
-                                // AÑADIDO: Soporte para alineación vertical del texto
                                 const vAlignClass = img.textVerticalAlign === 'top' ? 'justify-start' : (img.textVerticalAlign === 'bottom' ? 'justify-end' : 'justify-center');
+                                const imgWidth = img.widthSize || (isSideText ? '45%' : (img.align === 'center' ? '80%' : '60%'));
+                                
+                                // APLICACIÓN DE FUENTE Y TAMAÑO ESPECÍFICOS
+                                const captionStyle = {
+                                    maxWidth: isSideText ? '100%' : imgWidth,
+                                    fontSize: img.captionFontSize || '10px',
+                                    fontFamily: img.captionFontFamily && img.captionFontFamily !== 'inherit' ? img.captionFontFamily : 'inherit'
+                                };
 
                                 return (
-                                    <div key={idx} className={`w-full flex flex-col ${alignClass} ${padClass}`}>
+                                    <div key={idx} className={`w-full flex flex-col ${alignClass} ${paddingTopClass} ${paddingBottomClass}`}>
                                         <div className={`flex ${isSideText ? (img.align === 'right' ? 'flex-row-reverse gap-4' : 'flex-row gap-4') : 'flex-col items-center gap-1.5'} w-full`} style={{ maxWidth: '100%' }}>
                                             
-                                            <div className="overflow-hidden shrink-0" style={{ width: isSideText ? '45%' : (img.align === 'center' ? '80%' : '60%') }}>
+                                            <div className="overflow-hidden shrink-0" style={{ width: imgWidth }}>
                                                 <img src={img.url} className="w-full h-full object-cover" style={{ transform: `scale(${imgScale}) translate(${imgX}%, ${imgY}%)`, transformOrigin: 'center' }} />
                                             </div>
                                             {img.caption && (
-                                                /* AÑADIDO: min-w-0 para obligar a flex-1 a respetar los saltos de línea */
                                                 <div className={`flex-1 flex flex-col min-w-0 ${isSideText ? vAlignClass : 'items-center w-full'}`}>
-                                                    <p className={`text-[10px] italic opacity-80 leading-relaxed whitespace-pre-wrap break-words ${isSideText ? (img.align === 'right' ? 'text-right' : 'text-left') : 'text-center'}`} style={{ maxWidth: isSideText ? '100%' : (img.align === 'center' ? '80%' : '60%') }}>
+                                                    <p className={`italic opacity-80 leading-relaxed whitespace-pre-wrap break-words ${isSideText ? 'text-justify' : 'text-center'}`} style={captionStyle}>
                                                         {img.caption}
                                                     </p>
                                                 </div>

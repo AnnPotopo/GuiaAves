@@ -156,7 +156,7 @@ export default function EditorLayout() {
   };
 
   const handleAddPage = (tipo) => {
-    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single' } };
+    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, showCopyright: false, copyrightText: '', titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single' } };
     setPages([...pages, newPage]);
     setCurrentPageIndex(pages.length); 
     setActiveTab(tipo === 'blanco' || tipo === 'foto' ? 'design' : 'content'); 
@@ -171,7 +171,7 @@ export default function EditorLayout() {
       const newPagesFromExcel = data.map((row, index) => ({
         id: `excel-${Date.now()}-${index}`, tipo: 'ave',
         config: {
-          groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single',
+          groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, showCopyright: false, copyrightText: '', titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single',
           nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '', nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
           orden: row['Orden'] || '', familia: row['Familia'] || '', iucn: row['Estado de conservación (IUCN)'] || '', nom059: row['Estado de conservación (NOM 059)'] || '',
           descripcion: row['Descripción'] || row['Descripcion'] || '', dimorfismo: row['Dimorfismo'] || '', longitud: row['Longitud'] || '',
@@ -310,7 +310,6 @@ export default function EditorLayout() {
                             <TextInput label="Nombre Científico" value={currentPage.config.nombreCientifico} onChange={(val) => updateCurrentPageConfig('nombreCientifico', val)} />
                             <div className="grid grid-cols-2 gap-2"><TextInput label="Orden" value={currentPage.config.orden} onChange={(val) => updateCurrentPageConfig('orden', val)} /><TextInput label="Familia" value={currentPage.config.familia} onChange={(val) => updateCurrentPageConfig('familia', val)} /></div>
                             
-                            {/* Menús Desplegables de Conservación intactos */}
                             <div className="grid grid-cols-2 gap-2">
                                 <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
                                     <span className="mb-1 text-gray-300 font-semibold">NOM 059</span>
@@ -351,7 +350,7 @@ export default function EditorLayout() {
                                 <button 
                                     onClick={() => {
                                         const currentDataImages = currentPage.config.dataImages || [];
-                                        updateCurrentPageConfig('dataImages', [...currentDataImages, { url: '', caption: '', align: 'center', textMode: 'caption', textVerticalAlign: 'center', scale: 1, offsetX: 0, offsetY: 0, padding: 'mb-4' }]);
+                                        updateCurrentPageConfig('dataImages', [...currentDataImages, { url: '', caption: '', align: 'center', textMode: 'caption', textVerticalAlign: 'center', scale: 1, offsetX: 0, offsetY: 0, paddingTop: 'mt-0', paddingBottom: 'mb-4', widthSize: '60%', captionFontSize: '10px', captionFontFamily: 'inherit' }]);
                                     }}
                                     className="w-full bg-emerald-900/50 hover:bg-emerald-800 text-emerald-400 text-xs py-2 rounded flex items-center justify-center gap-2 transition"
                                 >
@@ -379,51 +378,128 @@ export default function EditorLayout() {
                                             updateCurrentPageConfig('dataImages', newArr);
                                         }} className="w-full bg-gray-900 text-xs text-white p-1.5 rounded mb-2 border border-gray-700 focus:outline-none min-h-[50px] whitespace-pre-wrap break-words" />
                                         
+                                        {/* AÑADIDO: Selectores de Fuente para el texto de la imagen */}
                                         <div className="grid grid-cols-2 gap-2 mb-2">
-                                            <select value={img.align} onChange={(e) => {
-                                                const newArr = [...currentPage.config.dataImages];
-                                                newArr[idx].align = e.target.value;
-                                                updateCurrentPageConfig('dataImages', newArr);
-                                            }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
-                                                <option value="center">Alinear Centro</option>
-                                                <option value="left">Alinear Izquierda</option>
-                                                <option value="right">Alinear Derecha</option>
-                                            </select>
-                                            <select value={img.textMode || 'caption'} onChange={(e) => {
-                                                const newArr = [...currentPage.config.dataImages];
-                                                newArr[idx].textMode = e.target.value;
-                                                updateCurrentPageConfig('dataImages', newArr);
-                                            }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
-                                                <option value="caption">Pie de foto (Abajo)</option>
-                                                <option value="side">Texto a su lado</option>
-                                            </select>
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 block mb-1">Fuente del texto</label>
+                                                <select value={img.captionFontFamily || 'inherit'} onChange={(e) => {
+                                                    const newArr = [...currentPage.config.dataImages];
+                                                    newArr[idx].captionFontFamily = e.target.value;
+                                                    updateCurrentPageConfig('dataImages', newArr);
+                                                }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                                    <option value="inherit">Misma del libro</option>
+                                                    <option value="'Arial', sans-serif">Arial</option>
+                                                    <option value="'Georgia', serif">Georgia</option>
+                                                    <option value="'Times New Roman', serif">Times New Roman</option>
+                                                    <option value="'Courier New', monospace">Courier New</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 block mb-1">Tamaño de letra</label>
+                                                <select value={img.captionFontSize || '10px'} onChange={(e) => {
+                                                    const newArr = [...currentPage.config.dataImages];
+                                                    newArr[idx].captionFontSize = e.target.value;
+                                                    updateCurrentPageConfig('dataImages', newArr);
+                                                }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                                    <option value="8px">8px (Muy pequeño)</option>
+                                                    <option value="9px">9px (Pequeño)</option>
+                                                    <option value="10px">10px (Normal)</option>
+                                                    <option value="11px">11px (Grande)</option>
+                                                    <option value="12px">12px (Muy grande)</option>
+                                                </select>
+                                            </div>
                                         </div>
 
-                                        {/* AÑADIDO: Selector de alineación vertical si el texto va a un lado */}
+                                        <div className="grid grid-cols-2 gap-2 mb-2">
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 block mb-1">Alineación Horizontal</label>
+                                                <select value={img.align} onChange={(e) => {
+                                                    const newArr = [...currentPage.config.dataImages];
+                                                    newArr[idx].align = e.target.value;
+                                                    updateCurrentPageConfig('dataImages', newArr);
+                                                }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                                    <option value="center">Alinear Centro</option>
+                                                    <option value="left">Alinear Izquierda</option>
+                                                    <option value="right">Alinear Derecha</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 block mb-1">Modo del Texto</label>
+                                                <select value={img.textMode || 'caption'} onChange={(e) => {
+                                                    const newArr = [...currentPage.config.dataImages];
+                                                    newArr[idx].textMode = e.target.value;
+                                                    updateCurrentPageConfig('dataImages', newArr);
+                                                }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                                    <option value="caption">Pie de foto (Abajo)</option>
+                                                    <option value="side">Texto a su lado</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
                                         {img.textMode === 'side' && (
-                                            <select value={img.textVerticalAlign || 'center'} onChange={(e) => {
-                                                const newArr = [...currentPage.config.dataImages];
-                                                newArr[idx].textVerticalAlign = e.target.value;
-                                                updateCurrentPageConfig('dataImages', newArr);
-                                            }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none mb-2">
-                                                <option value="top">Texto alineado Arriba</option>
-                                                <option value="center">Texto alineado al Centro</option>
-                                                <option value="bottom">Texto alineado Abajo</option>
-                                            </select>
+                                            <div className="mb-2">
+                                                <label className="text-[10px] text-gray-400 block mb-1">Alineación Vertical del Texto</label>
+                                                <select value={img.textVerticalAlign || 'center'} onChange={(e) => {
+                                                    const newArr = [...currentPage.config.dataImages];
+                                                    newArr[idx].textVerticalAlign = e.target.value;
+                                                    updateCurrentPageConfig('dataImages', newArr);
+                                                }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none mb-2">
+                                                    <option value="top">Texto alineado Arriba</option>
+                                                    <option value="center">Texto alineado al Centro</option>
+                                                    <option value="bottom">Texto alineado Abajo</option>
+                                                </select>
+                                            </div>
                                         )}
 
                                         <div className="mb-2">
-                                            <label className="text-[10px] text-gray-400 block mb-1">Espaciado (Padding Inferior)</label>
-                                            <select value={img.padding || 'mb-4'} onChange={(e) => {
+                                            <label className="text-[10px] text-gray-400 block mb-1">Tamaño de Imagen</label>
+                                            <select value={img.widthSize || (img.textMode === 'side' ? '45%' : '60%')} onChange={(e) => {
                                                 const newArr = [...currentPage.config.dataImages];
-                                                newArr[idx].padding = e.target.value;
+                                                newArr[idx].widthSize = e.target.value;
                                                 updateCurrentPageConfig('dataImages', newArr);
                                             }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
-                                                <option value="mb-1">Muy poco</option>
-                                                <option value="mb-4">Normal</option>
-                                                <option value="mb-8">Bastante</option>
-                                                <option value="mb-12">Mucho</option>
+                                                <option value="25%">Pequeño (25%)</option>
+                                                <option value="33%">Tercio (33%)</option>
+                                                <option value="45%">Casi mitad (45%)</option>
+                                                <option value="50%">Mitad (50%)</option>
+                                                <option value="60%">Normal (60%)</option>
+                                                <option value="75%">Grande (75%)</option>
+                                                <option value="100%">Ancho Completo (100%)</option>
                                             </select>
+                                        </div>
+
+                                        {/* AÑADIDO: Selectores de Espaciado Superior e Inferior */}
+                                        <div className="grid grid-cols-2 gap-2 mb-2">
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 block mb-1">Espaciado Superior</label>
+                                                <select value={img.paddingTop || 'mt-0'} onChange={(e) => {
+                                                    const newArr = [...currentPage.config.dataImages];
+                                                    newArr[idx].paddingTop = e.target.value;
+                                                    updateCurrentPageConfig('dataImages', newArr);
+                                                }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                                    <option value="mt-0">Nada (0)</option>
+                                                    <option value="mt-2">Poco</option>
+                                                    <option value="mt-4">Normal</option>
+                                                    <option value="mt-8">Bastante</option>
+                                                    <option value="mt-12">Mucho</option>
+                                                    <option value="mt-16">Gigante</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 block mb-1">Espaciado Inferior</label>
+                                                <select value={img.paddingBottom || img.padding || 'mb-4'} onChange={(e) => {
+                                                    const newArr = [...currentPage.config.dataImages];
+                                                    newArr[idx].paddingBottom = e.target.value;
+                                                    updateCurrentPageConfig('dataImages', newArr);
+                                                }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                                    <option value="mb-0">Nada (0)</option>
+                                                    <option value="mb-2">Poco</option>
+                                                    <option value="mb-4">Normal</option>
+                                                    <option value="mb-8">Bastante</option>
+                                                    <option value="mb-12">Mucho</option>
+                                                    <option value="mb-16">Gigante</option>
+                                                </select>
+                                            </div>
                                         </div>
 
                                         <div className="grid grid-cols-1 gap-2 bg-gray-900 p-2 rounded">
@@ -517,7 +593,6 @@ export default function EditorLayout() {
 
                     {currentPage.tipo === 'ave' && (
                          <ControlPanel title="Posición del Título">
-                             {/* AÑADIDO: Casilla para ocultar el título */}
                              <label className="flex items-center gap-2 text-[11px] text-gray-300 cursor-pointer mb-3 bg-gray-800 p-2 rounded border border-gray-700">
                                  <input type="checkbox" checked={currentPage.config.hideTitle || false} onChange={(e) => updateCurrentPageConfig('hideTitle', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> 
                                  Ocultar Título (No mostrar Nombres)
@@ -558,6 +633,16 @@ export default function EditorLayout() {
                                  <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
                                      <input type="checkbox" checked={currentPage.config.showPlaceholderBox || false} onChange={(e) => updateCurrentPageConfig('showPlaceholderBox', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> Mostrar etiqueta PLACEHOLDER
                                  </label>
+                                 
+                                 {/* AÑADIDO: Opciones de Derechos de Autor en 'ave' */}
+                                 <div className="mt-2 border-t border-gray-700 pt-2">
+                                     <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                         <input type="checkbox" checked={currentPage.config.showCopyright || false} onChange={(e) => updateCurrentPageConfig('showCopyright', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> Derechos de Autor (Foto)
+                                     </label>
+                                     {currentPage.config.showCopyright && (
+                                         <input type="text" placeholder="Ej: © 2026 Juan Pérez" value={currentPage.config.copyrightText || ''} onChange={(e) => updateCurrentPageConfig('copyrightText', e.target.value)} className="w-full bg-gray-900 text-xs text-white p-2 rounded mt-2 border border-gray-600 focus:outline-none" />
+                                     )}
+                                 </div>
                              </div>
                          </ControlPanel>
                     )}
@@ -622,6 +707,18 @@ export default function EditorLayout() {
                                   </>
                               )}
                           </div>
+                          
+                          {/* AÑADIDO: Opciones de Derechos de Autor para la página exclusiva de 'foto' */}
+                          {currentPage.tipo === 'foto' && (
+                              <div className="bg-gray-800 p-2 rounded border border-gray-700 mb-3">
+                                  <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                      <input type="checkbox" checked={currentPage.config.showCopyright || false} onChange={(e) => updateCurrentPageConfig('showCopyright', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> Derechos de Autor
+                                  </label>
+                                  {currentPage.config.showCopyright && (
+                                      <input type="text" placeholder="Ej: © 2026 Juan Pérez" value={currentPage.config.copyrightText || ''} onChange={(e) => updateCurrentPageConfig('copyrightText', e.target.value)} className="w-full bg-gray-900 text-xs text-white p-2 rounded mt-2 border border-gray-600 focus:outline-none" />
+                                  )}
+                              </div>
+                          )}
 
                           {(!currentPage.config.galleryLayout || currentPage.config.galleryLayout === 'single') && (
                               <div className="grid grid-cols-1 gap-4 bg-gray-800 p-3 rounded border border-gray-700 mb-3">
