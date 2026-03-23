@@ -78,8 +78,47 @@ const CropMarks = () => (
     </>
 );
 
-export default function PageRenderer({ pageData, bookSize = 'trade', printSettings = {}, isPrintMode = false, pageIndex = 0, bookTitle = "Guía" }) {
+// NUEVO COMPONENTE: NUMERADOR DE PÁGINAS
+const PageNumberDisplay = ({ num, show, tipo }) => {
+    if (!show || !num || tipo === 'portada') return null;
+    const isRight = num % 2 !== 0; // Imprenta: Impares siempre a la derecha, Pares a la izquierda
+    return (
+        <div className={`absolute bottom-6 ${isRight ? 'right-8' : 'left-8'} z-50 text-[10px] font-bold opacity-60`} style={{ fontFamily: 'monospace' }}>
+            {num}
+        </div>
+    );
+};
+
+export default function PageRenderer({ pageData, bookSize = 'trade', printSettings = {}, isPrintMode = false, pageIndex = 0, bookTitle = "Guía", forceHalf = null, pageNum = null, showPageNumbers = true }) {
   if (!pageData) return null;
+
+  const sizeStyles = {
+    trade: { width: printSettings.splitPages || forceHalf ? '152.4mm' : '304.8mm', height: '228.6mm' }, 
+    letter: { width: printSettings.splitPages || forceHalf ? '215.9mm' : '431.8mm', height: '279.4mm' }, 
+    standard: { width: printSettings.splitPages || forceHalf ? '425px' : '850px', height: '550px' }
+  };
+
+  const currentDimensions = sizeStyles[bookSize] || sizeStyles.trade;
+  const bookContainerClass = `relative bg-white overflow-hidden ${isPrintMode ? 'break-inside-avoid shadow-none' : 'shadow-2xl rounded-sm flex'}`;
+
+  // HOJAS EN BLANCO GENERADAS POR EL MOTOR DE IMPOSICIÓN (Relleno de cuadernillo)
+  if (pageData.isBlankPad) {
+      return (
+          <div className="break-after-page flex items-center justify-center w-[100vw] min-h-[100vh] bg-white">
+              <div className="relative" style={{ padding: '20mm' }}>
+                  <div className="relative shadow-[0_0_15px_rgba(0,0,0,0.1)]">
+                      <div className={bookContainerClass} style={{ ...currentDimensions, backgroundColor: '#ffffff' }}></div>
+                      {printSettings.cropMarks && <CropMarks />}
+                      {printSettings.slugInfo && (
+                          <div className="absolute -bottom-[8mm] left-[0] w-full flex justify-between text-[8px] font-mono text-gray-500">
+                              <span>{bookTitle}</span><span>Pág. {pageNum} (En Blanco)</span>
+                          </div>
+                      )}
+                  </div>
+              </div>
+          </div>
+      );
+  }
 
   const config = pageData.config || {};
   const bgColor = config.backgroundColor || '#ffffff';
@@ -90,43 +129,31 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const titleBgColor = config.titleBgColor || '#000000';
   const titleBgOpacity = config.titleBgOpacity !== undefined ? config.titleBgOpacity : 0.6;
   
-  // DISEÑO EDITORIAL
   const fontFamily = config.fontFamily || 'system-ui, sans-serif';
   const baseFontSize = config.fontSize || '11pt';
   const marginSize = config.marginSize || '15mm';
 
-  // AJUSTES DE IMAGEN (Zoom, Paneo y Fit)
   const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
   const imgScale = config.imageScale || 1;
   const imgOffsetX = config.imageOffsetX || 0;
   const imgOffsetY = config.imageOffsetY || 0;
-  const imgFit = config.imageFit || 'cover'; // NUEVO: cover vs contain
+  const imgFit = config.imageFit || 'cover'; 
 
   const imageStyles = {
     opacity: imgOpacity,
     transform: `scale(${imgScale}) translate(${imgOffsetX}%, ${imgOffsetY}%)`,
     transformOrigin: 'center center',
     transition: 'transform 0.1s ease-out',
-    objectFit: imgFit // Aplicamos la regla dinámica
+    objectFit: imgFit
   };
 
   const { showBleed = false, showMargins = false, splitPages = false, cropMarks = false, slugInfo = false } = printSettings;
-
-  const sizeStyles = {
-    trade: { width: splitPages ? '152.4mm' : '304.8mm', height: '228.6mm' }, 
-    letter: { width: splitPages ? '215.9mm' : '431.8mm', height: '279.4mm' }, 
-    standard: { width: splitPages ? '425px' : '850px', height: '550px' }
-  };
-
-  const currentDimensions = sizeStyles[bookSize] || sizeStyles.trade;
-  
-  const bookContainerClass = `relative bg-white overflow-hidden ${isPrintMode ? 'break-inside-avoid shadow-none' : 'shadow-2xl rounded-sm flex'}`;
 
   const isBlockField = (field, defaultBlock = false) => {
       return config[`block_${field}`] !== undefined ? config[`block_${field}`] : defaultBlock;
   };
 
-  const PrintPageWrapper = ({ children, isLeftHalf = false }) => {
+  const PrintPageWrapper = ({ children, customPageNum }) => {
       if (!isPrintMode) return children; 
       return (
           <div className="break-after-page flex items-center justify-center w-[100vw] min-h-[100vh] bg-white">
@@ -135,9 +162,9 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                       {children}
                       {cropMarks && <CropMarks />}
                       {slugInfo && (
-                          <div className="absolute -bottom-[8mm] left-[0] w-full flex justify-between text-[8px] font-mono text-gray-500" style={{ fontFamily: 'monospace' }}>
+                          <div className="absolute -bottom-[8mm] left-[0] w-full flex justify-between text-[8px] font-mono text-gray-500">
                               <span>{bookTitle}</span>
-                              <span>Pág. {pageIndex + 1}{splitPages ? (isLeftHalf ? 'A' : 'B') : ''}</span>
+                              <span>Pág. {customPageNum || pageNum || (pageIndex + 1)}</span>
                           </div>
                       )}
                   </div>
@@ -150,9 +177,10 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   if (pageData.tipo === 'portada' || pageData.tipo === 'foto' || pageData.tipo === 'blanco') {
     const isCentered = config.layout === 'center';
     return (
-      <PrintPageWrapper>
+      <PrintPageWrapper customPageNum={pageNum}>
         <div className={bookContainerClass} style={{ ...currentDimensions, backgroundColor: bgColor, color: textColor, fontFamily: fontFamily }}>
           {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
+          <PageNumberDisplay num={pageNum} show={showPageNumbers} tipo={pageData.tipo} />
           
           {pageData.tipo === 'portada' && (
               <>
@@ -182,9 +210,11 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
     const nomColor = getStatusColor('nom059', config.nom059, themeColor);
     const iucnColor = getStatusColor('iucn', config.iucn, themeColor);
 
-    const ImageSide = () => (
-        <div className={`relative overflow-hidden ${splitPages ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, fontFamily: fontFamily }}>
+    const ImageSide = ({ pNum }) => (
+        <div className={`relative overflow-hidden ${splitPages || forceHalf ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, fontFamily: fontFamily }}>
              {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
+             <PageNumberDisplay num={pNum} show={showPageNumbers} tipo="ave" />
+             
              {titlePosition === 'image' && (
                 <div 
                   className="absolute top-0 left-0 w-full z-20 flex flex-col justify-start"
@@ -202,10 +232,11 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
         </div>
     );
 
-    const DataSide = () => (
-        <div className={`relative flex flex-col bg-white ${splitPages ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, color: textColor, padding: marginSize, fontFamily: fontFamily, fontSize: baseFontSize }}>
+    const DataSide = ({ pNum }) => (
+        <div className={`relative flex flex-col bg-white ${splitPages || forceHalf ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, color: textColor, padding: marginSize, fontFamily: fontFamily, fontSize: baseFontSize }}>
              {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
-             {showCircle && <div className={`absolute top-0 ${isImageRight && !splitPages && !isPrintMode ? 'left-0 rounded-br-full' : 'right-0 rounded-bl-full'} w-24 h-24 print:border opacity-80 z-10`} style={{ backgroundColor: themeColor }}></div>}
+             <PageNumberDisplay num={pNum} show={showPageNumbers} tipo="ave" />
+             {showCircle && <div className={`absolute top-0 ${isImageRight && !splitPages && !isPrintMode && !forceHalf ? 'left-0 rounded-br-full' : 'right-0 rounded-bl-full'} w-24 h-24 print:border opacity-80 z-10`} style={{ backgroundColor: themeColor }}></div>}
              
              {titlePosition !== 'image' && (
                  <div className="relative z-20 mb-4 border-b pb-2" style={{ borderColor: `${themeColor}33` }}>
@@ -237,28 +268,42 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
         </div>
     );
 
+    // MODO IMPOSICIÓN (MEDIA PÁGINA ESPECÍFICA)
+    if (forceHalf) {
+        const SideContent = forceHalf === 'image' ? ImageSide : DataSide;
+        return (
+            <PrintPageWrapper customPageNum={pageNum}>
+                <div className={bookContainerClass} style={currentDimensions}>
+                    <SideContent pNum={pageNum} />
+                </div>
+            </PrintPageWrapper>
+        );
+    }
+
+    const startNum = pageData._startPageNum || pageNum;
+
     if (splitPages) {
         if (isPrintMode) {
             return (
                 <>
-                    <PrintPageWrapper isLeftHalf={true}><div className={bookContainerClass} style={currentDimensions}>{isImageRight ? <DataSide /> : <ImageSide />}</div></PrintPageWrapper>
-                    <PrintPageWrapper isLeftHalf={false}><div className={bookContainerClass} style={currentDimensions}>{isImageRight ? <ImageSide /> : <DataSide />}</div></PrintPageWrapper>
+                    <PrintPageWrapper customPageNum={startNum}><div className={bookContainerClass} style={currentDimensions}>{isImageRight ? <DataSide pNum={startNum}/> : <ImageSide pNum={startNum}/>}</div></PrintPageWrapper>
+                    <PrintPageWrapper customPageNum={startNum + 1}><div className={bookContainerClass} style={currentDimensions}>{isImageRight ? <ImageSide pNum={startNum + 1}/> : <DataSide pNum={startNum + 1}/>}</div></PrintPageWrapper>
                 </>
             );
         }
         return (
             <div className="flex flex-col xl:flex-row items-center justify-center gap-8 bg-transparent w-full">
-                <div className={bookContainerClass} style={currentDimensions}>{isImageRight ? <DataSide /> : <ImageSide />}</div>
-                <div className={bookContainerClass} style={currentDimensions}>{isImageRight ? <ImageSide /> : <DataSide />}</div>
+                <div className={bookContainerClass} style={currentDimensions}>{isImageRight ? <DataSide pNum={startNum} /> : <ImageSide pNum={startNum} />}</div>
+                <div className={bookContainerClass} style={currentDimensions}>{isImageRight ? <ImageSide pNum={startNum + 1} /> : <DataSide pNum={startNum + 1} />}</div>
             </div>
         );
     }
 
     return (
-      <PrintPageWrapper>
+      <PrintPageWrapper customPageNum={startNum}>
           <div className={`${bookContainerClass} ${isImageRight ? 'flex-row-reverse' : 'flex-row'}`} style={currentDimensions}>
-              <ImageSide />
-              <DataSide />
+              <ImageSide pNum={isImageRight ? startNum + 1 : startNum} />
+              <DataSide pNum={isImageRight ? startNum : startNum + 1} />
           </div>
       </PrintPageWrapper>
     );

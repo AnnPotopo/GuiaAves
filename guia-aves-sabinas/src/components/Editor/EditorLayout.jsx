@@ -4,7 +4,7 @@ import {
   Menu, Upload, Save, ArrowLeft, FileText, 
   Square, Palette, Layers3, Droplets, AlignCenter, Layout, 
   Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck, Printer, AlertTriangle, BookOpen, FileDigit,
-  Maximize, MoveHorizontal, MoveVertical, Loader2
+  Maximize, MoveHorizontal, MoveVertical, Loader2, FolderPlus, Settings2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -43,12 +43,17 @@ export default function EditorLayout() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   
-  const [editorViewMode, setEditorViewMode] = useState('spread');
+  const [editorViewMode, setEditorViewMode] = useState('spread'); // spread, split, imposed
 
   const [bookTitle, setBookTitle] = useState("Cargando...");
   const [bookSize, setBookSize] = useState("trade"); 
   const [pages, setPages] = useState([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+
+  // NUEVO: SISTEMA DE GRUPOS Y NUMERACIÓN
+  const [bookGroups, setBookGroups] = useState([{ id: 'default', name: 'Libro Principal' }]);
+  const [showPageNumbers, setShowPageNumbers] = useState(true);
+  const [signatureSize, setSignatureSize] = useState(16); // Páginas por cuadernillo
 
   const [printSettings, setPrintSettings] = useState({
       showBleed: false,
@@ -69,6 +74,9 @@ export default function EditorLayout() {
           setBookTitle(data.titulo || "Sin título");
           setBookSize(data.bookSize || "trade");
           setPages(data.paginas || []);
+          if (data.grupos) setBookGroups(data.grupos);
+          if (data.showPageNumbers !== undefined) setShowPageNumbers(data.showPageNumbers);
+          if (data.signatureSize) setSignatureSize(data.signatureSize);
         } else {
           alert("No se encontró este libro en la base de datos.");
         }
@@ -79,7 +87,18 @@ export default function EditorLayout() {
     loadBookFromFirebase();
   }, [bookId]);
 
-  const currentPage = pages[currentPageIndex] || null;
+  // CALCULAR NÚMEROS DE PÁGINA GLOBALES
+  const pagesWithNumbers = React.useMemo(() => {
+      let currentNum = 1;
+      return pages.map(p => {
+          const numPages = p.tipo === 'ave' ? 2 : 1;
+          const startNum = currentNum;
+          currentNum += numPages;
+          return { ...p, _startPageNum: startNum, _numPages: numPages };
+      });
+  }, [pages]);
+
+  const currentPage = pagesWithNumbers[currentPageIndex] || null;
 
   const updateCurrentPageConfig = (key, value) => {
     setPages(prevPages => {
@@ -90,6 +109,15 @@ export default function EditorLayout() {
   };
 
   const updatePrintSettings = (key, value) => setPrintSettings(prev => ({ ...prev, [key]: value }));
+
+  // GESTIÓN DE GRUPOS
+  const handleAddGroup = () => {
+      setBookGroups([...bookGroups, { id: `g_${Date.now()}`, name: 'Nuevo Grupo' }]);
+  };
+
+  const handleUpdateGroupName = (id, newName) => {
+      setBookGroups(bookGroups.map(g => g.id === id ? { ...g, name: newName } : g));
+  };
 
   const handleDeletePage = () => {
     if (pages.length <= 1) return alert("El libro debe tener al menos una página.");
@@ -102,7 +130,7 @@ export default function EditorLayout() {
   };
 
   const handleAddPage = (tipo) => {
-    const newPage = { id: Date.now().toString(), tipo: tipo, config: { backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm' } };
+    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm' } };
     setPages([...pages, newPage]);
     setCurrentPageIndex(pages.length); 
     setActiveTab(tipo === 'blanco' || tipo === 'foto' ? 'design' : 'content'); 
@@ -117,6 +145,7 @@ export default function EditorLayout() {
       const newPagesFromExcel = data.map((row, index) => ({
         id: `excel-${Date.now()}-${index}`, tipo: 'ave',
         config: {
+          groupId: 'default',
           backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', marginSize: '15mm',
           nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '',
           nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
@@ -135,7 +164,7 @@ export default function EditorLayout() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await setDoc(doc(db, "libros", bookId), { titulo: bookTitle, bookSize: bookSize, paginas: pages, fechaActualizacion: new Date().toLocaleDateString() }, { merge: true });
+      await setDoc(doc(db, "libros", bookId), { titulo: bookTitle, bookSize: bookSize, paginas: pages, grupos: bookGroups, showPageNumbers, signatureSize, fechaActualizacion: new Date().toLocaleDateString() }, { merge: true });
       alert(`¡Libro guardado en la nube con éxito!`);
     } catch (error) {
       alert("Hubo un error al guardar. Revisa tu consola.");
@@ -154,12 +183,29 @@ export default function EditorLayout() {
 
     setIsUploadingImage(true);
     try {
-        const options = { maxSizeMB: 2.5, maxWidthOrHeight: 2700, useWebWorker: true };
+        // Opciones estrictas de compresión
+        const options = { 
+            maxSizeMB: 2.0,           // Límite estricto de 2 MB
+            maxWidthOrHeight: 2700,   // Resolución ideal para 6x9 a 300 DPI
+            useWebWorker: true,
+            fileType: 'image/jpeg',   // FORZAMOS a JPG (destruye el peso extra de los PNG)
+            initialQuality: 0.85      // Compresión al 85% (calidad visual idéntica)
+        };
+        
+        // El navegador comprime la foto
         const compressedFile = await imageCompression(file, options);
-        const storageRef = ref(storage, `libros/${bookId}/${Date.now()}_${compressedFile.name}`);
+        
+        // Cambiamos el nombre para asegurar que termine en .jpg
+        const fileName = `${Date.now()}_comprimida.jpg`;
+        const storageRef = ref(storage, `libros/${bookId}/${fileName}`);
+        
         await uploadBytes(storageRef, compressedFile);
         const downloadURL = await getDownloadURL(storageRef);
         updateCurrentPageConfig('imageSrc', downloadURL);
+        
+        console.log(`Foto original: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`Foto comprimida: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+
     } catch (error) {
         console.error("Error al procesar/subir imagen:", error);
         alert("Ocurrió un error al procesar tu foto. Revisa la consola.");
@@ -167,6 +213,35 @@ export default function EditorLayout() {
         setIsUploadingImage(false);
         e.target.value = null;
     }
+  };
+
+  // MOTOR DE IMPOSICIÓN (Calcula el orden físico para los cuadernillos)
+  const getImposedSpreads = () => {
+      const phys = [];
+      pagesWithNumbers.forEach(p => {
+          if (p.tipo === 'ave') {
+              const isImageRight = p.config.imagePosition === 'right';
+              phys.push({ parent: p, forceHalf: isImageRight ? 'data' : 'image', pageNum: p._startPageNum });
+              phys.push({ parent: p, forceHalf: isImageRight ? 'image' : 'data', pageNum: p._startPageNum + 1 });
+          } else {
+              phys.push({ parent: p, forceHalf: null, pageNum: p._startPageNum });
+          }
+      });
+
+      const spreads = [];
+      const numSigs = Math.ceil(phys.length / signatureSize);
+      for (let s = 0; s < numSigs; s++) {
+          const sigPages = phys.slice(s * signatureSize, (s + 1) * signatureSize);
+          while (sigPages.length < signatureSize) {
+              sigPages.push({ isBlankPad: true, pageNum: '-' });
+          }
+          for (let i = 0; i < signatureSize / 2; i++) {
+              const leftIdx = i % 2 === 0 ? signatureSize - 1 - i : i;
+              const rightIdx = i % 2 === 0 ? i : signatureSize - 1 - i;
+              spreads.push({ left: sigPages[leftIdx], right: sigPages[rightIdx], sigIndex: s + 1 });
+          }
+      }
+      return spreads;
   };
 
   return (
@@ -201,6 +276,13 @@ export default function EditorLayout() {
             {activeTab === 'pages' && (
                <div className={`${!sidebarOpen && 'flex flex-col items-center'} px-3`}>
                   <div className="mb-6 border-b border-gray-800 pb-4">
+                      <p className={`text-xs uppercase tracking-wider text-gray-500 font-bold mb-3 ${!sidebarOpen && 'hidden'}`}>Asignar Grupo</p>
+                      {sidebarOpen && (
+                          <select value={currentPage?.config.groupId || 'default'} onChange={(e) => updateCurrentPageConfig('groupId', e.target.value)} className="w-full bg-gray-800 text-sm text-gray-200 p-2.5 rounded border border-gray-700 focus:border-emerald-500 focus:outline-none mb-4">
+                              {bookGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                          </select>
+                      )}
+                      
                       <p className={`text-xs uppercase tracking-wider text-gray-500 font-bold mb-3 ${!sidebarOpen && 'hidden'}`}>Formato del Libro</p>
                       {sidebarOpen && (
                           <select value={bookSize} onChange={(e) => setBookSize(e.target.value)} className="w-full bg-gray-800 text-sm text-gray-200 p-2.5 rounded border border-gray-700 focus:border-emerald-500 focus:outline-none">
@@ -228,7 +310,7 @@ export default function EditorLayout() {
             {activeTab === 'content' && sidebarOpen && currentPage && (
                 <div className="px-4">
                     <div className="mb-4 bg-gray-800 p-3 rounded flex justify-between items-center">
-                        <div><p className="text-[10px] text-gray-400 uppercase">Editando Textos</p><p className="font-bold text-white capitalize">Pág. {currentPageIndex + 1}: {currentPage.tipo}</p></div>
+                        <div><p className="text-[10px] text-gray-400 uppercase">Editando Textos</p><p className="font-bold text-white capitalize">Pág. {currentPage._startPageNum}: {currentPage.tipo}</p></div>
                         <button onClick={handleDeletePage} className="text-red-400 hover:text-red-300 bg-red-400/10 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
                     </div>
                     {currentPage.tipo === 'portada' && (
@@ -254,11 +336,15 @@ export default function EditorLayout() {
             {activeTab === 'design' && sidebarOpen && currentPage && (
                 <div>
                     <div className="px-4 mb-2 flex justify-between items-center bg-gray-800 p-3 mx-4 rounded">
-                        <div><p className="text-[10px] text-gray-400 uppercase">Editando Estilos</p><p className="font-bold text-white capitalize">Pág. {currentPageIndex + 1}: {currentPage.tipo}</p></div>
+                        <div><p className="text-[10px] text-gray-400 uppercase">Editando Estilos</p><p className="font-bold text-white capitalize">Pág. {currentPage._startPageNum}: {currentPage.tipo}</p></div>
                         <button onClick={handleDeletePage} className="text-red-400 hover:text-red-300 bg-red-400/10 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
                     </div>
 
                     <ControlPanel title="Tipografía y Diseño de Página">
+                        <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer mb-3 bg-gray-800 p-2 rounded border border-gray-700">
+                            <input type="checkbox" checked={showPageNumbers} onChange={(e) => setShowPageNumbers(e.target.checked)} className="accent-emerald-500 w-4 h-4" /> 
+                            Mostrar Números de Página
+                        </label>
                         <div className="grid grid-cols-1 gap-3">
                             <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
                                 <span className="mb-1 text-gray-300 font-semibold">Fuente (Tipografía)</span>
@@ -357,10 +443,8 @@ export default function EditorLayout() {
                               <input type="text" placeholder="O pega el link aquí..." value={currentPage.config.imageSrc || ''} onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)} className="bg-transparent text-sm text-gray-400 w-full focus:outline-none" />
                           </div>
 
-                          {/* NUEVO PANEL: AJUSTE DE IMAGEN (FIT Y POSICIÓN) */}
                           <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase mt-4">Encuadre de Imagen</label>
                           <div className="grid grid-cols-1 gap-4 bg-gray-800 p-3 rounded border border-gray-700 mb-3">
-                              
                               <div>
                                   <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1">Modo de Ajuste</span></label>
                                   <div className="flex bg-gray-900 rounded p-1 gap-1">
@@ -368,7 +452,6 @@ export default function EditorLayout() {
                                       <button onClick={() => updateCurrentPageConfig('imageFit', 'contain')} className={`flex-1 text-[10px] py-1 rounded ${currentPage.config.imageFit === 'contain' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Ajustar Completa</button>
                                   </div>
                               </div>
-
                               <div>
                                   <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Maximize className="w-3 h-3"/> Zoom (Escala)</span><span>{currentPage.config.imageScale || 1}x</span></label>
                                   <input type="range" min="0.5" max="3" step="0.05" value={currentPage.config.imageScale || 1} onChange={(e) => updateCurrentPageConfig('imageScale', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
@@ -405,24 +488,44 @@ export default function EditorLayout() {
             {activeTab === 'print' && sidebarOpen && (
                 <div className="px-4">
                     <div className="bg-emerald-900/40 border border-emerald-800 p-4 rounded-lg mb-4">
-                        <div className="flex items-start gap-3 text-emerald-300 mb-2"><AlertTriangle className="w-5 h-5 flex-shrink-0" /><p className="text-xs font-bold uppercase tracking-wider">Exportación PDF</p></div>
-                        <p className="text-[11px] text-emerald-100/70 text-justify leading-relaxed">Las fuentes quedarán incrustadas. Usa Adobe Acrobat para convertir el PDF a perfil CMYK (FOGRA39) para imprenta.</p>
+                        <div className="flex items-start gap-3 text-emerald-300 mb-2"><AlertTriangle className="w-5 h-5 flex-shrink-0" /><p className="text-xs font-bold uppercase tracking-wider">Exportación a PDF</p></div>
+                        <p className="text-[11px] text-emerald-100/70 text-justify leading-relaxed">Para exportar el diseño exacto, selecciona "Preparar PDF" y guarda como archivo usando la opción nativa de tu navegador.</p>
                     </div>
 
-                    <ControlPanel title="Ajustes de Pre-Prensa (Sólo para PDF)">
+                    <ControlPanel title="Formato de Encuadernación">
+                        <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700 mb-2">
+                            <span className="mb-1 text-gray-300 font-semibold">Diseño de Imprenta</span>
+                            <select value={editorViewMode === 'imposed' ? 'imposed' : 'split'} onChange={(e) => {setEditorViewMode(e.target.value); updatePrintSettings('splitPages', e.target.value === 'split');}} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                <option value="split">Páginas Sueltas (Normal)</option>
+                                <option value="imposed">Cuadernillos (Imposición)</option>
+                            </select>
+                        </label>
+                        {editorViewMode === 'imposed' && (
+                            <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
+                                <span className="mb-1 text-gray-300 font-semibold">Páginas por Cuadernillo</span>
+                                <select value={signatureSize} onChange={(e) => setSignatureSize(parseInt(e.target.value))} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                    <option value="4">4 Páginas (1 Hoja)</option>
+                                    <option value="8">8 Páginas (2 Hojas)</option>
+                                    <option value="16">16 Páginas (4 Hojas)</option>
+                                    <option value="32">32 Páginas (8 Hojas)</option>
+                                </select>
+                            </label>
+                        )}
+                    </ControlPanel>
+
+                    <ControlPanel title="Ajustes de Pre-Prensa (PDF)">
                         <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer bg-gray-800 p-3 rounded border border-gray-700 mb-2 hover:bg-gray-700 transition">
                             <input type="checkbox" checked={printSettings.cropMarks} onChange={(e) => updatePrintSettings('cropMarks', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> 
                             Incluir Marcas de Corte
                         </label>
                         <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer bg-gray-800 p-3 rounded border border-gray-700 mb-2 hover:bg-gray-700 transition">
                             <input type="checkbox" checked={printSettings.slugInfo} onChange={(e) => updatePrintSettings('slugInfo', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> 
-                            Información del Documento (Slug)
+                            Información del Documento
                         </label>
-                        <p className="text-[10px] text-gray-500 mt-2 text-justify">La "Tripa" se exportará en páginas sueltas como requiere la imprenta.</p>
                     </ControlPanel>
 
                     <button onClick={handlePrint} className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded shadow-lg flex items-center justify-center gap-2">
-                        <Printer className="w-5 h-5" /> Generar PDF (Tripa)
+                        <Printer className="w-5 h-5" /> Preparar PDF
                     </button>
                 </div>
             )}
@@ -434,42 +537,92 @@ export default function EditorLayout() {
           </button>
         </div>
 
+        {/* ÁREA DE TRABAJO CENTRAL (PANTALLA) */}
         <div className="flex-1 flex flex-col relative overflow-auto bg-gray-300 z-0 items-center">
             
             <div className="flex items-center gap-2 mt-6 print:hidden bg-white p-1 rounded-lg shadow-sm z-10">
-                <button onClick={() => setEditorViewMode('spread')} className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'spread' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><BookOpen className="w-4 h-4" /> Pliego Unido</button>
-                <button onClick={() => setEditorViewMode('split')} className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'split' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><FileDigit className="w-4 h-4" /> Páginas Separadas</button>
+                <button onClick={() => {setEditorViewMode('spread'); updatePrintSettings('splitPages', false);}} className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'spread' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><BookOpen className="w-4 h-4" /> Pliego Unido</button>
+                <button onClick={() => {setEditorViewMode('split'); updatePrintSettings('splitPages', true);}} className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'split' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><FileDigit className="w-4 h-4" /> Páginas Separadas</button>
+                <button onClick={() => {setEditorViewMode('imposed'); updatePrintSettings('splitPages', true);}} className={`px-4 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 ${editorViewMode === 'imposed' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}><Settings2 className="w-4 h-4" /> Bonches (Imposición)</button>
             </div>
 
-            <div className="min-h-full p-8 flex flex-col items-center justify-center">
-                 <div className="transition-all duration-300 transform scale-100 origin-center">
-                    <PageRenderer pageData={pages[currentPageIndex]} bookSize={bookSize} printSettings={{ ...printSettings, splitPages: editorViewMode === 'split' }} isPrintMode={false} />
+            <div className="min-h-full p-8 flex flex-col items-center justify-center w-full">
+                 <div className="transition-all duration-300 transform scale-100 origin-center w-full flex justify-center">
+                    {editorViewMode === 'imposed' ? (
+                        <div className="flex flex-col gap-16">
+                            {getImposedSpreads().map((spread, idx) => (
+                                <div key={idx} className="flex flex-col items-center">
+                                    <p className="text-xs font-mono text-gray-500 mb-2 bg-white/50 px-3 py-1 rounded-full">Firma {spread.sigIndex} | Pliego de Impresión {idx + 1}</p>
+                                    <div className="flex gap-0 shadow-2xl">
+                                        <PageRenderer pageData={spread.left.parent} forceHalf={spread.left.forceHalf} pageNum={spread.left.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={false} showPageNumbers={showPageNumbers} />
+                                        <PageRenderer pageData={spread.right.parent} forceHalf={spread.right.forceHalf} pageNum={spread.right.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={false} showPageNumbers={showPageNumbers} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <PageRenderer pageData={currentPage} bookSize={bookSize} printSettings={{ ...printSettings, splitPages: editorViewMode === 'split' }} isPrintMode={false} showPageNumbers={showPageNumbers} pageNum={currentPage?._startPageNum} />
+                    )}
                  </div>
             </div>
         </div>
 
+        {/* MENÚ LATERAL DERECHO (ÍNDICE Y GRUPOS) */}
         <div className="w-64 bg-white border-l border-gray-300 flex flex-col shadow-2xl z-10 shrink-0">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                 <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2"><FileCheck className="w-4 h-4 text-emerald-600" />Índice</h3>
-                <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded-full">{pages.length}</span>
+                <div className="flex items-center gap-2">
+                    <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded-full">{pagesWithNumbers.length > 0 ? pagesWithNumbers[pagesWithNumbers.length - 1]._startPageNum + (pagesWithNumbers[pagesWithNumbers.length - 1]._numPages - 1) : 0} Pág.</span>
+                    <button onClick={handleAddGroup} className="text-gray-500 hover:text-emerald-600 p-1" title="Añadir Grupo"><FolderPlus className="w-5 h-5"/></button>
+                </div>
             </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 bg-gray-100">
-                {pages.map((p, idx) => {
-                    let pageName = p.tipo;
-                    if (p.tipo === 'ave') pageName = p.config.nombreComun || 'Ave sin nombre';
-                    if (p.tipo === 'portada') pageName = p.config.titulo || 'Portada';
+            
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 bg-gray-100">
+                {bookGroups.map(group => {
+                    const groupPages = pagesWithNumbers.map((p, idx) => ({...p, originalIndex: idx})).filter(p => (p.config.groupId || 'default') === group.id);
                     return (
-                      <button key={p.id} onClick={() => setCurrentPageIndex(idx)} className={`w-full text-left flex flex-col p-3 rounded-lg transition border ${idx === currentPageIndex ? 'bg-emerald-50 border-emerald-500 shadow-sm' : 'bg-white border-gray-200 hover:border-emerald-300 hover:shadow'}`}>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${idx === currentPageIndex ? 'text-emerald-600' : 'text-gray-400'}`}>Pág. {idx + 1} • {p.tipo}</span>
-                          <span className="text-sm font-semibold text-gray-800 capitalize truncate">{pageName}</span>
-                      </button>
+                        <div key={group.id} className="mb-5 bg-white p-2 rounded shadow-sm border border-gray-200">
+                            <input 
+                                value={group.name} 
+                                onChange={(e) => handleUpdateGroupName(group.id, e.target.value)}
+                                className="font-bold text-gray-800 text-[10px] uppercase tracking-wider bg-transparent border-b border-transparent hover:border-gray-300 focus:border-emerald-500 focus:outline-none w-full mb-2 pb-1"
+                            />
+                            <div className="space-y-1.5">
+                                {groupPages.length === 0 && <p className="text-[10px] text-gray-400 italic">No hay páginas</p>}
+                                {groupPages.map(p => {
+                                    let pageName = p.tipo;
+                                    if (p.tipo === 'ave') pageName = p.config.nombreComun || 'Ave sin nombre';
+                                    if (p.tipo === 'portada') pageName = p.config.titulo || 'Portada';
+                                    const pageRange = p._numPages > 1 ? `${p._startPageNum}-${p._startPageNum + p._numPages - 1}` : p._startPageNum;
+                                    return (
+                                        <button key={p.id} onClick={() => {setCurrentPageIndex(p.originalIndex); setEditorViewMode(editorViewMode === 'imposed' ? 'spread' : editorViewMode);}} className={`w-full text-left flex flex-col px-2 py-1.5 rounded transition border ${p.originalIndex === currentPageIndex && editorViewMode !== 'imposed' ? 'bg-emerald-50 border-emerald-500' : 'bg-transparent border-transparent hover:bg-gray-50'}`}>
+                                            <span className={`text-[9px] font-bold tracking-wider ${p.originalIndex === currentPageIndex && editorViewMode !== 'imposed' ? 'text-emerald-600' : 'text-gray-400'}`}>Pág. {pageRange} • {p.tipo}</span>
+                                            <span className="text-xs font-semibold text-gray-700 capitalize truncate">{pageName}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     );
                 })}
             </div>
         </div>
       </div>
 
-      <PrintEngine pages={pages} bookSize={bookSize} printSettings={printSettings} bookTitle={bookTitle} />
+      {/* MOTOR DE IMPRESIÓN (Soporta Imposición de Cuadernillos) */}
+      {editorViewMode === 'imposed' ? (
+          <div className="hidden print:block w-full bg-white m-0 p-0 z-[9999] absolute top-0 left-0">
+             <style dangerouslySetInnerHTML={{__html: `@media print { @page { margin: 0 !important; size: auto; } body, html { margin: 0 !important; padding: 0 !important; background-color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}} />
+             {getImposedSpreads().map((spread, idx) => (
+                <div key={`print-spread-${idx}`} className="flex break-after-page">
+                    <PageRenderer pageData={spread.left.parent} forceHalf={spread.left.forceHalf} pageNum={spread.left.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={true} showPageNumbers={showPageNumbers} bookTitle={bookTitle} />
+                    <PageRenderer pageData={spread.right.parent} forceHalf={spread.right.forceHalf} pageNum={spread.right.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={true} showPageNumbers={showPageNumbers} bookTitle={bookTitle} />
+                </div>
+             ))}
+          </div>
+      ) : (
+          <PrintEngine pages={pagesWithNumbers} bookSize={bookSize} printSettings={printSettings} bookTitle={bookTitle} showPageNumbers={showPageNumbers} />
+      )}
     </>
   );
 }

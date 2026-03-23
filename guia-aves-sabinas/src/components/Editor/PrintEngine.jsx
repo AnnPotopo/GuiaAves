@@ -1,7 +1,7 @@
 import React from 'react';
 import PageRenderer from './PageRenderer';
 
-export default function PrintEngine({ pages, bookSize, printSettings, bookTitle }) {
+export default function PrintEngine({ pages, bookSize, printSettings, bookTitle, showPageNumbers }) {
   return (
     <div className="hidden print:block w-full bg-white m-0 p-0 z-[9999] absolute top-0 left-0">
       <style dangerouslySetInnerHTML={{
@@ -22,11 +22,13 @@ export default function PrintEngine({ pages, bookSize, printSettings, bookTitle 
          <PageRenderer
             key={`print-${p.id}`}
             pageData={p}
+            pageNum={p._startPageNum} // Pasamos el número exacto
             bookSize={bookSize}
             printSettings={printSettings}
             isPrintMode={true}
             pageIndex={idx}
             bookTitle={bookTitle}
+            showPageNumbers={showPageNumbers} // Permite ocultarlos si se desea
          />
       ))}
     </div>
