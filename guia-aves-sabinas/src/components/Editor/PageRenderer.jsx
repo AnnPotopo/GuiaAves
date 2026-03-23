@@ -22,7 +22,6 @@ const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock, lineHeight }) 
             <Icon className="w-4 h-4 flex-shrink-0" style={{ color: iconColor || '#3b82f6' }} />
             <strong className="uppercase tracking-wider opacity-70" style={{ fontSize: '0.85em' }}>{label}</strong>
           </div>
-          {/* AÑADIDO: break-words y whitespace-pre-wrap para forzar el párrafo y los saltos de línea */}
           <p className="opacity-90 text-justify w-full whitespace-pre-wrap break-words">{value}</p>
         </>
       )}
@@ -30,26 +29,29 @@ const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock, lineHeight }) 
   );
 };
 
+// MODIFICADO: Lógica de colores más robusta basada en valores dropdown y abreviaciones estándar
 const getStatusColor = (type, text) => {
-  if (!text || text.trim() === '' || text.toLowerCase().includes('no listada') || text.toLowerCase().includes('no evaluada') || text.toLowerCase().includes('datos insuficientes')) return '#9ca3af'; 
+  if (!text || text.trim() === '') return '#9ca3af'; // Gris por defecto (sin datos)
   
   const s = text.toLowerCase();
   
   if (type === 'nom059') {
-      if (s.includes('extinta') || s === 'e') return '#7f1d1d'; 
-      if (s.includes('peligro') || s === 'p') return '#dc2626'; 
-      if (s.includes('amenazada') || s === 'a') return '#ea580c'; 
-      if (s.includes('protección') || s.includes('proteccion') || s === 'pr') return '#eab308'; 
+      // Coincidencias específicas o por abreviación estándar en NOM 059
+      if (s.includes('(e)') || s.includes('extinta')) return '#7f1d1d'; // Rojoguindo
+      if (s.includes('(p)') || s.includes('peligro')) return '#dc2626'; // Rojo
+      if (s.includes('(a)') || s.includes('amenazada')) return '#ea580c'; // Naranja
+      if (s.includes('(pr)') || s.includes('protección') || s.includes('proteccion')) return '#eab308'; // Amarillo
   }
   if (type === 'iucn') {
-      if (s.includes('crítico') || s.includes('critico') || s.includes('cr')) return '#dc2626'; 
-      if (s.includes('peligro') || s.includes('en')) return '#ea580c'; 
-      if (s.includes('vulnerable') || s.includes('vu')) return '#eab308'; 
-      if (s.includes('casi') || s.includes('nt')) return '#84cc16'; 
-      if (s.includes('menor') || s.includes('lc')) return '#22c55e'; 
-      if (s.includes('extinta') || s.includes('ex') || s.includes('ew')) return '#7f1d1d'; 
+      // Coincidencias específicas por abreviación estándar IUCN
+      if (s.includes('(ex)') || s.includes('(ew)') || s.includes('extinta')) return '#7f1d1d'; // Rojoguindo
+      if (s.includes('(cr)') || s.includes('crítico') || s.includes('critico')) return '#dc2626'; // Rojo
+      if (s.includes('(en)') || s.includes('peligro')) return '#ea580c'; // Naranja
+      if (s.includes('(vu)') || s.includes('vulnerable')) return '#eab308'; // Amarillo
+      if (s.includes('(nt)') || s.includes('casi amenazada')) return '#84cc16'; // Lima
+      if (s.includes('(lc)') || s.includes('preocupación menor')) return '#22c55e'; // Verde
   }
-  return '#9ca3af'; 
+  return '#9ca3af'; // Gris por defecto (No listada, NE, DD o formato no reconocido)
 };
 
 const hexToRgba = (hex, alpha) => {
@@ -308,7 +310,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                 <div className="pt-2 relative w-full flex flex-col">
                     <BirdDetailItem Icon={Info} label="Descripción" value={config.descripcion} iconColor={themeColor} isBlock={isBlockField('descripcion', true)} lineHeight={lineHeight} />
                     
-                    {/* NUEVO: Módulos Flexibles de Imágenes en la Descripción */}
                     {config.dataImages && config.dataImages.length > 0 && (
                         <div className="flex flex-col w-full mt-4">
                             {config.dataImages.map((img, idx) => {
@@ -325,7 +326,8 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                                 return (
                                     <div key={idx} className={`w-full flex flex-col ${alignClass} ${padClass}`}>
                                         <div className={`flex ${isSideText ? (img.align === 'right' ? 'flex-row-reverse gap-4' : 'flex-row gap-4') : 'flex-col items-center gap-1.5'} w-full`} style={{ maxWidth: '100%' }}>
-                                            <div className="overflow-hidden rounded shadow-sm ring-1 ring-gray-200 shrink-0" style={{ width: isSideText ? '45%' : (img.align === 'center' ? '80%' : '60%') }}>
+                                            {/* MODIFICADO: Eliminadas clases rounded, shadow y ring */}
+                                            <div className="overflow-hidden shrink-0" style={{ width: isSideText ? '45%' : (img.align === 'center' ? '80%' : '60%') }}>
                                                 <img src={img.url} className="w-full h-full object-cover" style={{ transform: `scale(${imgScale}) translate(${imgX}%, ${imgY}%)`, transformOrigin: 'center' }} />
                                             </div>
                                             {img.caption && (
