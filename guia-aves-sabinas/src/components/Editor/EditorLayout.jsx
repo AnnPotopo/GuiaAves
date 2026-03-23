@@ -156,7 +156,7 @@ export default function EditorLayout() {
   };
 
   const handleAddPage = (tipo) => {
-    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single' } };
+    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single' } };
     setPages([...pages, newPage]);
     setCurrentPageIndex(pages.length); 
     setActiveTab(tipo === 'blanco' || tipo === 'foto' ? 'design' : 'content'); 
@@ -171,7 +171,7 @@ export default function EditorLayout() {
       const newPagesFromExcel = data.map((row, index) => ({
         id: `excel-${Date.now()}-${index}`, tipo: 'ave',
         config: {
-          groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single',
+          groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single',
           nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '', nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
           orden: row['Orden'] || '', familia: row['Familia'] || '', iucn: row['Estado de conservación (IUCN)'] || '', nom059: row['Estado de conservación (NOM 059)'] || '',
           descripcion: row['Descripción'] || row['Descripcion'] || '', dimorfismo: row['Dimorfismo'] || '', longitud: row['Longitud'] || '',
@@ -310,7 +310,7 @@ export default function EditorLayout() {
                             <TextInput label="Nombre Científico" value={currentPage.config.nombreCientifico} onChange={(val) => updateCurrentPageConfig('nombreCientifico', val)} />
                             <div className="grid grid-cols-2 gap-2"><TextInput label="Orden" value={currentPage.config.orden} onChange={(val) => updateCurrentPageConfig('orden', val)} /><TextInput label="Familia" value={currentPage.config.familia} onChange={(val) => updateCurrentPageConfig('familia', val)} /></div>
                             
-                            {/* MODIFICADO: Dropdowns para NOM e IUCN */}
+                            {/* Menús Desplegables de Conservación intactos */}
                             <div className="grid grid-cols-2 gap-2">
                                 <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
                                     <span className="mb-1 text-gray-300 font-semibold">NOM 059</span>
@@ -347,11 +347,11 @@ export default function EditorLayout() {
                             <TextInput label="Dimorfismo" value={currentPage.config.dimorfismo} onChange={(val) => updateCurrentPageConfig('dimorfismo', val)} isTextArea />
                             <TextInput label="Descripción" value={currentPage.config.descripcion} onChange={(val) => updateCurrentPageConfig('descripcion', val)} isTextArea />
                             
-                            <ControlPanel title="Imágenes Adicionales (Debajo de la descripción)">
+                            <ControlPanel title="Imágenes en Descripción">
                                 <button 
                                     onClick={() => {
                                         const currentDataImages = currentPage.config.dataImages || [];
-                                        updateCurrentPageConfig('dataImages', [...currentDataImages, { url: '', caption: '', align: 'center', textMode: 'caption', scale: 1, offsetX: 0, offsetY: 0, padding: 'mb-4' }]);
+                                        updateCurrentPageConfig('dataImages', [...currentDataImages, { url: '', caption: '', align: 'center', textMode: 'caption', textVerticalAlign: 'center', scale: 1, offsetX: 0, offsetY: 0, padding: 'mb-4' }]);
                                     }}
                                     className="w-full bg-emerald-900/50 hover:bg-emerald-800 text-emerald-400 text-xs py-2 rounded flex items-center justify-center gap-2 transition"
                                 >
@@ -398,6 +398,19 @@ export default function EditorLayout() {
                                                 <option value="side">Texto a su lado</option>
                                             </select>
                                         </div>
+
+                                        {/* AÑADIDO: Selector de alineación vertical si el texto va a un lado */}
+                                        {img.textMode === 'side' && (
+                                            <select value={img.textVerticalAlign || 'center'} onChange={(e) => {
+                                                const newArr = [...currentPage.config.dataImages];
+                                                newArr[idx].textVerticalAlign = e.target.value;
+                                                updateCurrentPageConfig('dataImages', newArr);
+                                            }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none mb-2">
+                                                <option value="top">Texto alineado Arriba</option>
+                                                <option value="center">Texto alineado al Centro</option>
+                                                <option value="bottom">Texto alineado Abajo</option>
+                                            </select>
+                                        )}
 
                                         <div className="mb-2">
                                             <label className="text-[10px] text-gray-400 block mb-1">Espaciado (Padding Inferior)</label>
@@ -504,6 +517,12 @@ export default function EditorLayout() {
 
                     {currentPage.tipo === 'ave' && (
                          <ControlPanel title="Posición del Título">
+                             {/* AÑADIDO: Casilla para ocultar el título */}
+                             <label className="flex items-center gap-2 text-[11px] text-gray-300 cursor-pointer mb-3 bg-gray-800 p-2 rounded border border-gray-700">
+                                 <input type="checkbox" checked={currentPage.config.hideTitle || false} onChange={(e) => updateCurrentPageConfig('hideTitle', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> 
+                                 Ocultar Título (No mostrar Nombres)
+                             </label>
+
                              <div className="grid grid-cols-2 gap-2">
                                  <button onClick={() => updateCurrentPageConfig('titlePosition', 'data')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.titlePosition !== 'image' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>En Datos</button>
                                  <button onClick={() => updateCurrentPageConfig('titlePosition', 'image')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.titlePosition === 'image' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>En Foto</button>

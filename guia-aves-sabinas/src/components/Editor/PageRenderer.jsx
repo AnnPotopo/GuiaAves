@@ -29,29 +29,26 @@ const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock, lineHeight }) 
   );
 };
 
-// MODIFICADO: Lógica de colores más robusta basada en valores dropdown y abreviaciones estándar
 const getStatusColor = (type, text) => {
-  if (!text || text.trim() === '') return '#9ca3af'; // Gris por defecto (sin datos)
+  if (!text || text.trim() === '' || text.toLowerCase().includes('no listada') || text.toLowerCase().includes('no evaluada') || text.toLowerCase().includes('datos insuficientes')) return '#9ca3af'; 
   
   const s = text.toLowerCase();
   
   if (type === 'nom059') {
-      // Coincidencias específicas o por abreviación estándar en NOM 059
-      if (s.includes('(e)') || s.includes('extinta')) return '#7f1d1d'; // Rojoguindo
-      if (s.includes('(p)') || s.includes('peligro')) return '#dc2626'; // Rojo
-      if (s.includes('(a)') || s.includes('amenazada')) return '#ea580c'; // Naranja
-      if (s.includes('(pr)') || s.includes('protección') || s.includes('proteccion')) return '#eab308'; // Amarillo
+      if (s.includes('extinta') || s === 'e') return '#7f1d1d'; 
+      if (s.includes('peligro') || s === 'p') return '#dc2626'; 
+      if (s.includes('amenazada') || s === 'a') return '#ea580c'; 
+      if (s.includes('protección') || s.includes('proteccion') || s === 'pr') return '#eab308'; 
   }
   if (type === 'iucn') {
-      // Coincidencias específicas por abreviación estándar IUCN
-      if (s.includes('(ex)') || s.includes('(ew)') || s.includes('extinta')) return '#7f1d1d'; // Rojoguindo
-      if (s.includes('(cr)') || s.includes('crítico') || s.includes('critico')) return '#dc2626'; // Rojo
-      if (s.includes('(en)') || s.includes('peligro')) return '#ea580c'; // Naranja
-      if (s.includes('(vu)') || s.includes('vulnerable')) return '#eab308'; // Amarillo
-      if (s.includes('(nt)') || s.includes('casi amenazada')) return '#84cc16'; // Lima
-      if (s.includes('(lc)') || s.includes('preocupación menor')) return '#22c55e'; // Verde
+      if (s.includes('crítico') || s.includes('critico') || s.includes('cr')) return '#dc2626'; 
+      if (s.includes('peligro') || s.includes('en')) return '#ea580c'; 
+      if (s.includes('vulnerable') || s.includes('vu')) return '#eab308'; 
+      if (s.includes('casi') || s.includes('nt')) return '#84cc16'; 
+      if (s.includes('menor') || s.includes('lc')) return '#22c55e'; 
+      if (s.includes('extinta') || s.includes('ex') || s.includes('ew')) return '#7f1d1d'; 
   }
-  return '#9ca3af'; // Gris por defecto (No listada, NE, DD o formato no reconocido)
+  return '#9ca3af'; 
 };
 
 const hexToRgba = (hex, alpha) => {
@@ -124,6 +121,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const textColor = config.textColor || '#1f2937'; 
   const themeColor = config.themeColor || '#3b82f6'; 
   const showCircle = config.showCornerCircle !== false; 
+  const hideTitle = config.hideTitle === true; // NUEVA CONFIGURACIÓN
   const titlePosition = config.titlePosition || 'data'; 
   const titleBgColor = config.titleBgColor || '#000000';
   const titleBgOpacity = config.titleBgOpacity !== undefined ? config.titleBgOpacity : 0.6;
@@ -220,7 +218,8 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                     </div>
                 )}
 
-                {titlePosition === 'image' && (
+                {/* MODIFICADO: Solo se muestra el título si hideTitle no está activo */}
+                {!hideTitle && titlePosition === 'image' && (
                     <div className="absolute top-0 left-0 w-full z-20 flex flex-col justify-start" style={{ backgroundColor: hexToRgba(titleBgColor, titleBgOpacity), padding: marginSize }}>
                         <h2 className="text-2xl md:text-3xl font-bold mb-1 text-white">{config.nombreComun || 'Nombre Común'}</h2>
                         <h3 className="text-sm md:text-md italic text-gray-200 font-serif">{config.nombreCientifico || 'Nombre Científico'}</h3>
@@ -279,7 +278,8 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
              <PageNumberDisplay num={pNum} show={showPageNumbers} position={pageNumberPosition} tipo="ave" />
              {showCircle && <div className={`absolute top-0 ${isImageRight && !splitPages && !isPrintMode && !forceHalf ? 'left-0 rounded-br-full' : 'right-0 rounded-bl-full'} w-24 h-24 print:border opacity-80 z-10`} style={{ backgroundColor: themeColor }}></div>}
              
-             {titlePosition !== 'image' && (
+             {/* MODIFICADO: Solo se muestra el título si hideTitle no está activo */}
+             {!hideTitle && titlePosition !== 'image' && (
                  <div className="relative z-20 mb-4 border-b pb-2" style={{ borderColor: `${themeColor}33` }}>
                     <h2 className="text-2xl md:text-3xl font-bold mb-1" style={{color: textColor}}>{config.nombreComun || 'Nombre Común'}</h2>
                     <h3 className="text-sm md:text-md italic opacity-70 font-serif">{config.nombreCientifico || 'Nombre Científico'}</h3>
@@ -323,15 +323,19 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                                 if (img.align === 'left') alignClass = 'items-start';
                                 if (img.align === 'right') alignClass = 'items-end';
 
+                                // AÑADIDO: Soporte para alineación vertical del texto
+                                const vAlignClass = img.textVerticalAlign === 'top' ? 'justify-start' : (img.textVerticalAlign === 'bottom' ? 'justify-end' : 'justify-center');
+
                                 return (
                                     <div key={idx} className={`w-full flex flex-col ${alignClass} ${padClass}`}>
                                         <div className={`flex ${isSideText ? (img.align === 'right' ? 'flex-row-reverse gap-4' : 'flex-row gap-4') : 'flex-col items-center gap-1.5'} w-full`} style={{ maxWidth: '100%' }}>
-                                            {/* MODIFICADO: Eliminadas clases rounded, shadow y ring */}
+                                            
                                             <div className="overflow-hidden shrink-0" style={{ width: isSideText ? '45%' : (img.align === 'center' ? '80%' : '60%') }}>
                                                 <img src={img.url} className="w-full h-full object-cover" style={{ transform: `scale(${imgScale}) translate(${imgX}%, ${imgY}%)`, transformOrigin: 'center' }} />
                                             </div>
                                             {img.caption && (
-                                                <div className={`flex-1 flex flex-col ${isSideText ? 'justify-center' : 'items-center w-full'}`}>
+                                                /* AÑADIDO: min-w-0 para obligar a flex-1 a respetar los saltos de línea */
+                                                <div className={`flex-1 flex flex-col min-w-0 ${isSideText ? vAlignClass : 'items-center w-full'}`}>
                                                     <p className={`text-[10px] italic opacity-80 leading-relaxed whitespace-pre-wrap break-words ${isSideText ? (img.align === 'right' ? 'text-right' : 'text-left') : 'text-center'}`} style={{ maxWidth: isSideText ? '100%' : (img.align === 'center' ? '80%' : '60%') }}>
                                                         {img.caption}
                                                     </p>
