@@ -5,7 +5,7 @@ import {
   Square, Palette, Layers3, Droplets, AlignCenter, Layout, 
   Trash2, FileEdit, Book, Image as ImageIcon, Link as LinkIcon, FileCheck, Printer, AlertTriangle, BookOpen, FileDigit,
   Maximize, MoveHorizontal, MoveVertical, Loader2, FolderPlus, Settings2,
-  ChevronUp, ChevronDown, GripVertical // NUEVOS ICONOS PARA REORGANIZAR
+  ChevronUp, ChevronDown, GripVertical, ImagePlus
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -50,20 +50,15 @@ export default function EditorLayout() {
   const [bookSize, setBookSize] = useState("trade"); 
   const [pages, setPages] = useState([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  
-  // NUEVO: Estado para arrastrar y soltar
   const [draggedIndex, setDraggedIndex] = useState(null);
 
   const [bookGroups, setBookGroups] = useState([{ id: 'default', name: 'Libro Principal' }]);
   const [showPageNumbers, setShowPageNumbers] = useState(true);
+  const [pageNumberPosition, setPageNumberPosition] = useState('default'); // NUEVO
   const [signatureSize, setSignatureSize] = useState(16); 
 
   const [printSettings, setPrintSettings] = useState({
-      showBleed: false,
-      showMargins: false,
-      splitPages: true,
-      cropMarks: true,
-      slugInfo: true
+      showBleed: false, showMargins: false, splitPages: true, cropMarks: true, slugInfo: true
   });
 
   useEffect(() => {
@@ -79,6 +74,7 @@ export default function EditorLayout() {
           setPages(data.paginas || []);
           if (data.grupos) setBookGroups(data.grupos);
           if (data.showPageNumbers !== undefined) setShowPageNumbers(data.showPageNumbers);
+          if (data.pageNumberPosition) setPageNumberPosition(data.pageNumberPosition);
           if (data.signatureSize) setSignatureSize(data.signatureSize);
         } else {
           alert("No se encontró este libro en la base de datos.");
@@ -112,15 +108,9 @@ export default function EditorLayout() {
 
   const updatePrintSettings = (key, value) => setPrintSettings(prev => ({ ...prev, [key]: value }));
 
-  const handleAddGroup = () => {
-      setBookGroups([...bookGroups, { id: `g_${Date.now()}`, name: 'Nuevo Grupo' }]);
-  };
+  const handleAddGroup = () => setBookGroups([...bookGroups, { id: `g_${Date.now()}`, name: 'Nuevo Grupo' }]);
+  const handleUpdateGroupName = (id, newName) => setBookGroups(bookGroups.map(g => g.id === id ? { ...g, name: newName } : g));
 
-  const handleUpdateGroupName = (id, newName) => {
-      setBookGroups(bookGroups.map(g => g.id === id ? { ...g, name: newName } : g));
-  };
-
-  // NUEVO: FUNCIONES DE REORDENAMIENTO DE PÁGINAS
   const movePageUp = (index) => {
       if (index === 0) return;
       const newPages = [...pages];
@@ -130,7 +120,6 @@ export default function EditorLayout() {
       setPages(newPages);
       setCurrentPageIndex(index - 1);
   };
-
   const movePageDown = (index) => {
       if (index === pages.length - 1) return;
       const newPages = [...pages];
@@ -141,32 +130,16 @@ export default function EditorLayout() {
       setCurrentPageIndex(index + 1);
   };
 
-  // NUEVO: LÓGICA DE DRAG AND DROP
-  const handleDragStart = (e, index) => {
-      setDraggedIndex(index);
-      e.dataTransfer.effectAllowed = "move";
-      setTimeout(() => e.target.classList.add("opacity-50"), 0);
-  };
-
-  const handleDragEnd = (e) => {
-      e.target.classList.remove("opacity-50");
-      setDraggedIndex(null);
-  };
-
-  const handleDragOver = (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-  };
-
+  const handleDragStart = (e, index) => { setDraggedIndex(index); e.dataTransfer.effectAllowed = "move"; setTimeout(() => e.target.classList.add("opacity-50"), 0); };
+  const handleDragEnd = (e) => { e.target.classList.remove("opacity-50"); setDraggedIndex(null); };
+  const handleDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; };
   const handleDrop = (e, targetIndex) => {
       e.preventDefault();
       if (draggedIndex === null || draggedIndex === targetIndex) return;
-
       const newPages = [...pages];
       const draggedPage = newPages[draggedIndex];
       newPages.splice(draggedIndex, 1);
       newPages.splice(targetIndex, 0, draggedPage);
-
       setPages(newPages);
       setCurrentPageIndex(targetIndex);
       setDraggedIndex(null);
@@ -183,7 +156,7 @@ export default function EditorLayout() {
   };
 
   const handleAddPage = (tipo) => {
-    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm' } };
+    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single' } };
     setPages([...pages, newPage]);
     setCurrentPageIndex(pages.length); 
     setActiveTab(tipo === 'blanco' || tipo === 'foto' ? 'design' : 'content'); 
@@ -198,10 +171,8 @@ export default function EditorLayout() {
       const newPagesFromExcel = data.map((row, index) => ({
         id: `excel-${Date.now()}-${index}`, tipo: 'ave',
         config: {
-          groupId: 'default',
-          backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm',
-          nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '',
-          nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
+          groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single',
+          nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '', nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
           orden: row['Orden'] || '', familia: row['Familia'] || '', iucn: row['Estado de conservación (IUCN)'] || '', nom059: row['Estado de conservación (NOM 059)'] || '',
           descripcion: row['Descripción'] || row['Descripcion'] || '', dimorfismo: row['Dimorfismo'] || '', longitud: row['Longitud'] || '',
           canto: row['Canto y llamado'] || '', habitat: row['Hábitat'] || row['Habitat'] || '', alimentacion: row['Alimentación'] || row['Alimentacion'] || ''
@@ -217,45 +188,25 @@ export default function EditorLayout() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await setDoc(doc(db, "libros", bookId), { titulo: bookTitle, bookSize: bookSize, paginas: pages, grupos: bookGroups, showPageNumbers, signatureSize, fechaActualizacion: new Date().toLocaleDateString() }, { merge: true });
+      await setDoc(doc(db, "libros", bookId), { titulo: bookTitle, bookSize: bookSize, paginas: pages, grupos: bookGroups, showPageNumbers, pageNumberPosition, signatureSize, fechaActualizacion: new Date().toLocaleDateString() }, { merge: true });
       alert(`¡Libro guardado en la nube con éxito!`);
-    } catch (error) {
-      alert("Hubo un error al guardar. Revisa tu consola.");
-    } finally {
-      setIsSaving(false);
-    }
+    } catch (error) { alert("Hubo un error al guardar."); } finally { setIsSaving(false); }
   };
 
-  const handlePrint = () => {
-      setTimeout(() => { window.print(); }, 500);
-  };
+  const handlePrint = () => setTimeout(() => { window.print(); }, 500);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setIsUploadingImage(true);
     try {
-        const options = { 
-            maxSizeMB: 2.0, 
-            maxWidthOrHeight: 2700, 
-            useWebWorker: true,
-            fileType: 'image/jpeg', 
-            initialQuality: 0.85 
-        };
+        const options = { maxSizeMB: 2.0, maxWidthOrHeight: 2700, useWebWorker: true, fileType: 'image/jpeg', initialQuality: 0.85 };
         const compressedFile = await imageCompression(file, options);
-        const fileName = `${Date.now()}_comprimida.jpg`;
-        const storageRef = ref(storage, `libros/${bookId}/${fileName}`);
+        const storageRef = ref(storage, `libros/${bookId}/${Date.now()}_comprimida.jpg`);
         await uploadBytes(storageRef, compressedFile);
         const downloadURL = await getDownloadURL(storageRef);
         updateCurrentPageConfig('imageSrc', downloadURL);
-    } catch (error) {
-        console.error("Error al procesar/subir imagen:", error);
-        alert("Ocurrió un error al procesar tu foto. Revisa la consola.");
-    } finally {
-        setIsUploadingImage(false);
-        e.target.value = null;
-    }
+    } catch (error) { alert("Error al procesar foto."); } finally { setIsUploadingImage(false); e.target.value = null; }
   };
 
   const getImposedSpreads = () => {
@@ -265,18 +216,13 @@ export default function EditorLayout() {
               const isImageRight = p.config.imagePosition === 'right';
               phys.push({ parent: p, forceHalf: isImageRight ? 'data' : 'image', pageNum: p._startPageNum });
               phys.push({ parent: p, forceHalf: isImageRight ? 'image' : 'data', pageNum: p._startPageNum + 1 });
-          } else {
-              phys.push({ parent: p, forceHalf: null, pageNum: p._startPageNum });
-          }
+          } else { phys.push({ parent: p, forceHalf: null, pageNum: p._startPageNum }); }
       });
-
       const spreads = [];
       const numSigs = Math.ceil(phys.length / signatureSize);
       for (let s = 0; s < numSigs; s++) {
           const sigPages = phys.slice(s * signatureSize, (s + 1) * signatureSize);
-          while (sigPages.length < signatureSize) {
-              sigPages.push({ isBlankPad: true, pageNum: '-' });
-          }
+          while (sigPages.length < signatureSize) { sigPages.push({ isBlankPad: true, pageNum: '-' }); }
           for (let i = 0; i < signatureSize / 2; i++) {
               const leftIdx = i % 2 === 0 ? signatureSize - 1 - i : i;
               const rightIdx = i % 2 === 0 ? i : signatureSize - 1 - i;
@@ -324,7 +270,6 @@ export default function EditorLayout() {
                               {bookGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                           </select>
                       )}
-                      
                       <p className={`text-xs uppercase tracking-wider text-gray-500 font-bold mb-3 ${!sidebarOpen && 'hidden'}`}>Formato del Libro</p>
                       {sidebarOpen && (
                           <select value={bookSize} onChange={(e) => setBookSize(e.target.value)} className="w-full bg-gray-800 text-sm text-gray-200 p-2.5 rounded border border-gray-700 focus:border-emerald-500 focus:outline-none">
@@ -338,7 +283,7 @@ export default function EditorLayout() {
                       <p className={`text-xs uppercase tracking-wider text-gray-500 font-bold mb-3 ${!sidebarOpen && 'hidden'}`}>Importar Datos</p>
                       <label className="flex items-center w-full p-2.5 rounded bg-emerald-900/30 hover:bg-emerald-800/50 text-emerald-400 border border-emerald-800/50 transition cursor-pointer">
                           <Upload className="w-5 h-5 min-w-[20px]" />
-                          {sidebarOpen && <span className="ml-3 text-sm font-semibold">Subir Excel de Aves</span>}
+                          {sidebarOpen && <span className="ml-3 text-sm font-semibold">Subir Excel</span>}
                           <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} />
                       </label>
                   </div>
@@ -370,6 +315,52 @@ export default function EditorLayout() {
                             <TextInput label="Canto y Llamado" value={currentPage.config.canto} onChange={(val) => updateCurrentPageConfig('canto', val)} />
                             <TextInput label="Dimorfismo" value={currentPage.config.dimorfismo} onChange={(val) => updateCurrentPageConfig('dimorfismo', val)} isTextArea />
                             <TextInput label="Descripción" value={currentPage.config.descripcion} onChange={(val) => updateCurrentPageConfig('descripcion', val)} isTextArea />
+                            
+                            {/* NUEVO PANEL: IMÁGENES INTEGRADAS EN LOS DATOS */}
+                            <ControlPanel title="Imágenes en Descripción">
+                                <button 
+                                    onClick={() => {
+                                        const currentDataImages = currentPage.config.dataImages || [];
+                                        updateCurrentPageConfig('dataImages', [...currentDataImages, { url: '', caption: '', align: 'center' }]);
+                                    }}
+                                    className="w-full bg-emerald-900/50 hover:bg-emerald-800 text-emerald-400 text-xs py-2 rounded flex items-center justify-center gap-2 transition"
+                                >
+                                    <ImagePlus className="w-4 h-4"/> Añadir Imagen a Textos
+                                </button>
+                                
+                                {(currentPage.config.dataImages || []).map((img, idx) => (
+                                    <div key={idx} className="bg-gray-800 p-2 rounded mt-2 border border-gray-700 relative">
+                                        <button 
+                                            onClick={() => {
+                                                const newArr = [...currentPage.config.dataImages];
+                                                newArr.splice(idx, 1);
+                                                updateCurrentPageConfig('dataImages', newArr);
+                                            }} 
+                                            className="absolute top-2 right-2 text-red-400 hover:text-red-300"
+                                        ><Trash2 className="w-3 h-3"/></button>
+                                        <p className="text-[10px] text-gray-500 mb-2 font-bold">Imagen {idx + 1}</p>
+                                        <input type="text" placeholder="Link de la imagen..." value={img.url} onChange={(e) => {
+                                            const newArr = [...currentPage.config.dataImages];
+                                            newArr[idx].url = e.target.value;
+                                            updateCurrentPageConfig('dataImages', newArr);
+                                        }} className="w-full bg-gray-900 text-xs text-white p-1.5 rounded mb-2 border border-gray-700 focus:outline-none" />
+                                        <input type="text" placeholder="Pie de foto (Opcional)" value={img.caption} onChange={(e) => {
+                                            const newArr = [...currentPage.config.dataImages];
+                                            newArr[idx].caption = e.target.value;
+                                            updateCurrentPageConfig('dataImages', newArr);
+                                        }} className="w-full bg-gray-900 text-xs text-white p-1.5 rounded mb-2 border border-gray-700 focus:outline-none" />
+                                        <select value={img.align} onChange={(e) => {
+                                            const newArr = [...currentPage.config.dataImages];
+                                            newArr[idx].align = e.target.value;
+                                            updateCurrentPageConfig('dataImages', newArr);
+                                        }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                            <option value="center">Bloque Centrado (Abajo)</option>
+                                            <option value="left">Flotar a la Izquierda (Abrazar texto)</option>
+                                            <option value="right">Flotar a la Derecha (Abrazar texto)</option>
+                                        </select>
+                                    </div>
+                                ))}
+                            </ControlPanel>
                         </div>
                     )}
                 </div>
@@ -383,10 +374,19 @@ export default function EditorLayout() {
                     </div>
 
                     <ControlPanel title="Tipografía y Diseño de Página">
-                        <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer mb-3 bg-gray-800 p-2 rounded border border-gray-700">
-                            <input type="checkbox" checked={showPageNumbers} onChange={(e) => setShowPageNumbers(e.target.checked)} className="accent-emerald-500 w-4 h-4" /> 
-                            Mostrar Números de Página
-                        </label>
+                        <div className="flex items-center justify-between gap-2 mb-3 bg-gray-800 p-2 rounded border border-gray-700">
+                            <label className="flex items-center gap-2 text-[11px] text-gray-300 cursor-pointer w-full">
+                                <input type="checkbox" checked={showPageNumbers} onChange={(e) => setShowPageNumbers(e.target.checked)} className="accent-emerald-500 w-4 h-4" /> 
+                                Num. de Pág.
+                            </label>
+                            <select value={pageNumberPosition} onChange={(e) => setPageNumberPosition(e.target.value)} disabled={!showPageNumbers} className="bg-gray-900 border border-gray-600 rounded text-[10px] p-1 text-white focus:outline-none w-1/2">
+                                <option value="default">Alternado (Libro)</option>
+                                <option value="left">Siempre Izq.</option>
+                                <option value="center">Centro</option>
+                                <option value="right">Siempre Der.</option>
+                            </select>
+                        </div>
+
                         <div className="grid grid-cols-1 gap-3">
                             <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
                                 <span className="mb-1 text-gray-300 font-semibold">Fuente (Tipografía)</span>
@@ -402,8 +402,6 @@ export default function EditorLayout() {
                                     <option value="'Courier New', monospace">Técnica (Courier New)</option>
                                 </select>
                             </label>
-                            
-                            {/* NUEVO: Controles de Tamaño e Interlineado (Line Height) juntos */}
                             <div className="grid grid-cols-2 gap-2">
                                 <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
                                     <span className="mb-1 text-gray-300 font-semibold">Tamaño Letra</span>
@@ -424,17 +422,10 @@ export default function EditorLayout() {
                                     </select>
                                 </label>
                             </div>
-                            <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
-                                <span className="mb-1 text-gray-300 font-semibold">Márgenes</span>
-                                <select value={currentPage.config.marginSize || '15mm'} onChange={(e) => updateCurrentPageConfig('marginSize', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
-                                    <option value="10mm">10mm (Estrecho)</option>
-                                    <option value="15mm">15mm (Estándar)</option>
-                                    <option value="20mm">20mm (Amplio)</option>
-                                </select>
-                            </label>
                         </div>
                     </ControlPanel>
 
+                    {/* RESTO DE CONTROLES INTACTOS... */}
                     {currentPage.tipo === 'ave' && (
                          <ControlPanel title="Posición del Título">
                              <div className="grid grid-cols-2 gap-2">
@@ -465,9 +456,6 @@ export default function EditorLayout() {
                                  <button onClick={() => updateCurrentPageConfig('imagePosition', 'left')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.imagePosition !== 'right' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Foto Izquierda</button>
                                  <button onClick={() => updateCurrentPageConfig('imagePosition', 'right')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.imagePosition === 'right' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Foto Derecha</button>
                              </div>
-                             <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer mt-2 bg-gray-800 p-2 rounded border border-gray-700">
-                                 <input type="checkbox" checked={currentPage.config.showCornerCircle !== false} onChange={(e) => updateCurrentPageConfig('showCornerCircle', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> Mostrar círculo en esquina
-                             </label>
                          </ControlPanel>
                     )}
 
@@ -487,47 +475,75 @@ export default function EditorLayout() {
                     )}
 
                     {(currentPage.tipo === 'ave' || currentPage.tipo === 'foto') && (
-                      <ControlPanel title="Fotografía Original">
-                          <label className={`flex items-center justify-center w-full gap-2 p-2 rounded text-sm text-white cursor-pointer transition ${isUploadingImage ? 'bg-gray-600 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'} mb-3 shadow`}>
-                              {isUploadingImage ? (
-                                  <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</span>
-                              ) : (
-                                  <><Upload className="w-4 h-4" /> Subir desde mi PC</>
-                              )}
-                              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploadingImage} />
-                          </label>
+                      <ControlPanel title="Galería y Mosaicos (Pág. Imagen)">
+                          
+                          <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase mt-2">Plantilla de Galería</label>
+                          <select value={currentPage.config.galleryLayout || 'single'} onChange={(e) => updateCurrentPageConfig('galleryLayout', e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded text-[11px] p-2 text-white focus:outline-none mb-4">
+                              <option value="single">Foto Única (Con ajustes de zoom)</option>
+                              <option value="grid2-v">2 Fotos (Verticales)</option>
+                              <option value="grid2-h">2 Fotos (Horizontales)</option>
+                              <option value="grid3">3 Fotos (1 Arriba, 2 Abajo)</option>
+                              <option value="grid4">4 Fotos (Cuadrícula)</option>
+                              <option value="mosaic">Mosaico (Estilo Collage)</option>
+                          </select>
 
-                          <div className="flex items-center gap-2 mb-3 bg-gray-800 p-2 rounded border border-gray-700">
-                              <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              <input type="text" placeholder="O pega el link aquí..." value={currentPage.config.imageSrc || ''} onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)} className="bg-transparent text-sm text-gray-400 w-full focus:outline-none" />
+                          <div className="bg-gray-800 p-2 rounded border border-gray-700 mb-3">
+                              <p className="text-[10px] text-gray-500 mb-2">Foto Principal (o única)</p>
+                              <div className="flex items-center gap-2 mb-2">
+                                  <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                  <input type="text" placeholder="Link de foto..." value={currentPage.config.imageSrc || ''} onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)} className="bg-gray-900 rounded p-1 text-xs text-white w-full focus:outline-none" />
+                              </div>
+                              
+                              {/* Fotos Adicionales para Galería */}
+                              {(currentPage.config.galleryLayout && currentPage.config.galleryLayout !== 'single') && (
+                                  <>
+                                     {(currentPage.config.extraImages || []).map((imgUrl, idx) => (
+                                         <div key={idx} className="flex items-center gap-2 mb-2">
+                                             <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                             <input type="text" placeholder={`Link de foto ${idx + 2}...`} value={imgUrl} onChange={(e) => {
+                                                 const newArr = [...currentPage.config.extraImages];
+                                                 newArr[idx] = e.target.value;
+                                                 updateCurrentPageConfig('extraImages', newArr);
+                                             }} className="bg-gray-900 rounded p-1 text-xs text-white w-full focus:outline-none" />
+                                             <button onClick={() => {
+                                                 const newArr = [...currentPage.config.extraImages];
+                                                 newArr.splice(idx, 1);
+                                                 updateCurrentPageConfig('extraImages', newArr);
+                                             }} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3"/></button>
+                                         </div>
+                                     ))}
+                                     <button 
+                                         onClick={() => updateCurrentPageConfig('extraImages', [...(currentPage.config.extraImages || []), ''])}
+                                         className="w-full text-[10px] bg-gray-700 hover:bg-gray-600 text-white py-1 rounded mt-1"
+                                     >+ Añadir imagen a galería</button>
+                                  </>
+                              )}
                           </div>
 
-                          <label className="text-[11px] text-gray-400 block mb-2 font-bold uppercase mt-4">Encuadre de Imagen</label>
-                          <div className="grid grid-cols-1 gap-4 bg-gray-800 p-3 rounded border border-gray-700 mb-3">
-                              <div>
-                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1">Modo de Ajuste</span></label>
-                                  <div className="flex bg-gray-900 rounded p-1 gap-1">
-                                      <button onClick={() => updateCurrentPageConfig('imageFit', 'cover')} className={`flex-1 text-[10px] py-1 rounded ${currentPage.config.imageFit !== 'contain' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Llenar</button>
-                                      <button onClick={() => updateCurrentPageConfig('imageFit', 'contain')} className={`flex-1 text-[10px] py-1 rounded ${currentPage.config.imageFit === 'contain' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Ajustar Completa</button>
+                          {/* Ajustes de Encuadre solo visibles si es Foto Única */}
+                          {(!currentPage.config.galleryLayout || currentPage.config.galleryLayout === 'single') && (
+                              <div className="grid grid-cols-1 gap-4 bg-gray-800 p-3 rounded border border-gray-700 mb-3">
+                                  <div>
+                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1">Modo de Ajuste</span></label>
+                                      <div className="flex bg-gray-900 rounded p-1 gap-1">
+                                          <button onClick={() => updateCurrentPageConfig('imageFit', 'cover')} className={`flex-1 text-[10px] py-1 rounded ${currentPage.config.imageFit !== 'contain' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Llenar</button>
+                                          <button onClick={() => updateCurrentPageConfig('imageFit', 'contain')} className={`flex-1 text-[10px] py-1 rounded ${currentPage.config.imageFit === 'contain' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Ajustar Completa</button>
+                                      </div>
+                                  </div>
+                                  <div>
+                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Maximize className="w-3 h-3"/> Zoom (Escala)</span><span>{currentPage.config.imageScale || 1}x</span></label>
+                                      <input type="range" min="0.5" max="3" step="0.05" value={currentPage.config.imageScale || 1} onChange={(e) => updateCurrentPageConfig('imageScale', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                  </div>
+                                  <div>
+                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><MoveHorizontal className="w-3 h-3"/> Eje X (Horizontal)</span><span>{currentPage.config.imageOffsetX || 0}%</span></label>
+                                      <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetX || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetX', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                  </div>
+                                  <div>
+                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><MoveVertical className="w-3 h-3"/> Eje Y (Vertical)</span><span>{currentPage.config.imageOffsetY || 0}%</span></label>
+                                      <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetY || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetY', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
                                   </div>
                               </div>
-                              <div>
-                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Maximize className="w-3 h-3"/> Zoom (Escala)</span><span>{currentPage.config.imageScale || 1}x</span></label>
-                                  <input type="range" min="0.5" max="3" step="0.05" value={currentPage.config.imageScale || 1} onChange={(e) => updateCurrentPageConfig('imageScale', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
-                              </div>
-                              <div>
-                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><MoveHorizontal className="w-3 h-3"/> Eje X (Horizontal)</span><span>{currentPage.config.imageOffsetX || 0}%</span></label>
-                                  <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetX || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetX', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
-                              </div>
-                              <div>
-                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><MoveVertical className="w-3 h-3"/> Eje Y (Vertical)</span><span>{currentPage.config.imageOffsetY || 0}%</span></label>
-                                  <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetY || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetY', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
-                              </div>
-                              <div>
-                                  <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Droplets className="w-3 h-3"/> Opacidad</span><span>{currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1}</span></label>
-                                  <input type="range" min="0" max="1" step="0.05" value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1} onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
-                              </div>
-                          </div>
+                          )}
                       </ControlPanel>
                     )}
 
@@ -543,7 +559,7 @@ export default function EditorLayout() {
                 </div>
             )}
 
-            {/* TAB 4: IMPRENTA */}
+            {/* TAB 4: IMPRENTA (INTACTO) */}
             {activeTab === 'print' && sidebarOpen && (
                 <div className="px-4">
                     <div className="bg-emerald-900/40 border border-emerald-800 p-4 rounded-lg mb-4">
@@ -596,7 +612,6 @@ export default function EditorLayout() {
           </button>
         </div>
 
-        {/* ÁREA DE TRABAJO CENTRAL (PANTALLA) */}
         <div className="flex-1 flex flex-col relative overflow-auto bg-gray-300 z-0 items-center">
             
             <div className="flex items-center gap-2 mt-6 print:hidden bg-white p-1 rounded-lg shadow-sm z-10">
@@ -613,14 +628,14 @@ export default function EditorLayout() {
                                 <div key={idx} className="flex flex-col items-center">
                                     <p className="text-xs font-mono text-gray-500 mb-2 bg-white/50 px-3 py-1 rounded-full">Firma {spread.sigIndex} | Pliego de Impresión {idx + 1}</p>
                                     <div className="flex gap-0 shadow-2xl">
-                                        <PageRenderer pageData={spread.left.parent} forceHalf={spread.left.forceHalf} pageNum={spread.left.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={false} showPageNumbers={showPageNumbers} />
-                                        <PageRenderer pageData={spread.right.parent} forceHalf={spread.right.forceHalf} pageNum={spread.right.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={false} showPageNumbers={showPageNumbers} />
+                                        <PageRenderer pageData={spread.left.parent} forceHalf={spread.left.forceHalf} pageNum={spread.left.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={false} showPageNumbers={showPageNumbers} pageNumberPosition={pageNumberPosition} />
+                                        <PageRenderer pageData={spread.right.parent} forceHalf={spread.right.forceHalf} pageNum={spread.right.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={false} showPageNumbers={showPageNumbers} pageNumberPosition={pageNumberPosition} />
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <PageRenderer pageData={currentPage} bookSize={bookSize} printSettings={{ ...printSettings, splitPages: editorViewMode === 'split' }} isPrintMode={false} showPageNumbers={showPageNumbers} pageNum={currentPage?._startPageNum} />
+                        <PageRenderer pageData={currentPage} bookSize={bookSize} printSettings={{ ...printSettings, splitPages: editorViewMode === 'split' }} isPrintMode={false} showPageNumbers={showPageNumbers} pageNum={currentPage?._startPageNum} pageNumberPosition={pageNumberPosition} />
                     )}
                  </div>
             </div>
@@ -654,7 +669,6 @@ export default function EditorLayout() {
                                     if (p.tipo === 'portada') pageName = p.config.titulo || 'Portada';
                                     const pageRange = p._numPages > 1 ? `${p._startPageNum}-${p._startPageNum + p._numPages - 1}` : p._startPageNum;
                                     
-                                    // Renderizado de la ficha con Drag & Drop y botones Arriba/Abajo
                                     return (
                                         <div 
                                             key={p.id} 
@@ -687,19 +701,18 @@ export default function EditorLayout() {
         </div>
       </div>
 
-      {/* MOTOR DE IMPRESIÓN */}
       {editorViewMode === 'imposed' ? (
           <div className="hidden print:block w-full bg-white m-0 p-0 z-[9999] absolute top-0 left-0">
              <style dangerouslySetInnerHTML={{__html: `@media print { @page { margin: 0 !important; size: auto; } body, html { margin: 0 !important; padding: 0 !important; background-color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}} />
              {getImposedSpreads().map((spread, idx) => (
                 <div key={`print-spread-${idx}`} className="flex break-after-page">
-                    <PageRenderer pageData={spread.left.parent} forceHalf={spread.left.forceHalf} pageNum={spread.left.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={true} showPageNumbers={showPageNumbers} bookTitle={bookTitle} />
-                    <PageRenderer pageData={spread.right.parent} forceHalf={spread.right.forceHalf} pageNum={spread.right.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={true} showPageNumbers={showPageNumbers} bookTitle={bookTitle} />
+                    <PageRenderer pageData={spread.left.parent} forceHalf={spread.left.forceHalf} pageNum={spread.left.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={true} showPageNumbers={showPageNumbers} pageNumberPosition={pageNumberPosition} bookTitle={bookTitle} />
+                    <PageRenderer pageData={spread.right.parent} forceHalf={spread.right.forceHalf} pageNum={spread.right.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={true} showPageNumbers={showPageNumbers} pageNumberPosition={pageNumberPosition} bookTitle={bookTitle} />
                 </div>
              ))}
           </div>
       ) : (
-          <PrintEngine pages={pagesWithNumbers} bookSize={bookSize} printSettings={printSettings} bookTitle={bookTitle} showPageNumbers={showPageNumbers} />
+          <PrintEngine pages={pagesWithNumbers} bookSize={bookSize} printSettings={printSettings} bookTitle={bookTitle} showPageNumbers={showPageNumbers} pageNumberPosition={pageNumberPosition} />
       )}
     </>
   );

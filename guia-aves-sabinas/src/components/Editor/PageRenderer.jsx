@@ -6,16 +6,12 @@ import {
 
 const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock, lineHeight }) => {
   if (!value) return null;
-
   return (
-    // Reemplazamos la clase estática "leading-relaxed" por nuestro lineHeight dinámico
     <div className={`flex items-start gap-3 ${isBlock ? 'flex-col gap-1.5' : ''}`} style={{ fontSize: '0.95em', lineHeight: lineHeight || '1.625' }}>
       {!isBlock ? (
         <>
           <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: iconColor || '#3b82f6' }} />
-          <div>
-            <strong>{label}:</strong> <span className="opacity-90 ml-1">{value}</span>
-          </div>
+          <div><strong>{label}:</strong> <span className="opacity-90 ml-1">{value}</span></div>
         </>
       ) : (
         <>
@@ -23,7 +19,7 @@ const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock, lineHeight }) 
             <Icon className="w-4 h-4 flex-shrink-0" style={{ color: iconColor || '#3b82f6' }} />
             <strong className="uppercase tracking-wider opacity-70" style={{ fontSize: '0.85em' }}>{label}</strong>
           </div>
-          <p className="opacity-90 text-justify">{value}</p>
+          <p className="opacity-90 text-justify w-full">{value}</p>
         </>
       )}
     </div>
@@ -33,7 +29,6 @@ const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock, lineHeight }) 
 const getStatusColor = (type, text, fallbackColor) => {
   if (!text) return fallbackColor;
   const s = text.toLowerCase();
-  
   if (type === 'nom059') {
       if (s.includes('extinta') || s === 'e') return '#1f2937'; 
       if (s.includes('peligro') || s === 'p') return '#ef4444'; 
@@ -68,28 +63,26 @@ const PrintGuides = ({ showBleed, showMargins, marginSize }) => (
 
 const CropMarks = () => (
     <>
-      <div className="absolute -top-[10mm] left-[0] w-[1px] h-[7mm] bg-black"></div>
-      <div className="absolute -top-[10mm] right-[0] w-[1px] h-[7mm] bg-black"></div>
-      <div className="absolute -bottom-[10mm] left-[0] w-[1px] h-[7mm] bg-black"></div>
-      <div className="absolute -bottom-[10mm] right-[0] w-[1px] h-[7mm] bg-black"></div>
-      <div className="absolute top-[0] -left-[10mm] w-[7mm] h-[1px] bg-black"></div>
-      <div className="absolute bottom-[0] -left-[10mm] w-[7mm] h-[1px] bg-black"></div>
-      <div className="absolute top-[0] -right-[10mm] w-[7mm] h-[1px] bg-black"></div>
-      <div className="absolute bottom-[0] -right-[10mm] w-[7mm] h-[1px] bg-black"></div>
+      <div className="absolute -top-[10mm] left-[0] w-[1px] h-[7mm] bg-black"></div><div className="absolute -top-[10mm] right-[0] w-[1px] h-[7mm] bg-black"></div>
+      <div className="absolute -bottom-[10mm] left-[0] w-[1px] h-[7mm] bg-black"></div><div className="absolute -bottom-[10mm] right-[0] w-[1px] h-[7mm] bg-black"></div>
+      <div className="absolute top-[0] -left-[10mm] w-[7mm] h-[1px] bg-black"></div><div className="absolute bottom-[0] -left-[10mm] w-[7mm] h-[1px] bg-black"></div>
+      <div className="absolute top-[0] -right-[10mm] w-[7mm] h-[1px] bg-black"></div><div className="absolute bottom-[0] -right-[10mm] w-[7mm] h-[1px] bg-black"></div>
     </>
 );
 
-const PageNumberDisplay = ({ num, show, tipo }) => {
+// MODIFICADO: ACEPTA LA POSICIÓN DEL NÚMERO
+const PageNumberDisplay = ({ num, show, tipo, position = 'default' }) => {
     if (!show || !num || tipo === 'portada') return null;
-    const isRight = num % 2 !== 0; 
-    return (
-        <div className={`absolute bottom-6 ${isRight ? 'right-8' : 'left-8'} z-50 text-[10px] font-bold opacity-60`} style={{ fontFamily: 'monospace' }}>
-            {num}
-        </div>
-    );
+    let posClass = 'bottom-6 ';
+    if (position === 'left') posClass += 'left-8';
+    else if (position === 'center') posClass += 'left-1/2 -translate-x-1/2';
+    else if (position === 'right') posClass += 'right-8';
+    else posClass += (num % 2 !== 0 ? 'right-8' : 'left-8'); // default (libro)
+    
+    return <div className={`absolute ${posClass} z-50 text-[10px] font-bold opacity-60`} style={{ fontFamily: 'monospace' }}>{num}</div>;
 };
 
-export default function PageRenderer({ pageData, bookSize = 'trade', printSettings = {}, isPrintMode = false, pageIndex = 0, bookTitle = "Guía", forceHalf = null, pageNum = null, showPageNumbers = true }) {
+export default function PageRenderer({ pageData, bookSize = 'trade', printSettings = {}, isPrintMode = false, pageIndex = 0, bookTitle = "Guía", forceHalf = null, pageNum = null, showPageNumbers = true, pageNumberPosition = 'default' }) {
   if (!pageData) return null;
 
   const sizeStyles = {
@@ -108,11 +101,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                   <div className="relative shadow-[0_0_15px_rgba(0,0,0,0.1)]">
                       <div className={bookContainerClass} style={{ ...currentDimensions, backgroundColor: '#ffffff' }}></div>
                       {printSettings.cropMarks && <CropMarks />}
-                      {printSettings.slugInfo && (
-                          <div className="absolute -bottom-[8mm] left-[0] w-full flex justify-between text-[8px] font-mono text-gray-500">
-                              <span>{bookTitle}</span><span>Pág. {pageNum} (En Blanco)</span>
-                          </div>
-                      )}
+                      {printSettings.slugInfo && <div className="absolute -bottom-[8mm] left-[0] w-full flex justify-between text-[8px] font-mono text-gray-500"><span>{bookTitle}</span><span>Pág. {pageNum} (En Blanco)</span></div>}
                   </div>
               </div>
           </div>
@@ -131,13 +120,17 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const fontFamily = config.fontFamily || 'system-ui, sans-serif';
   const baseFontSize = config.fontSize || '11pt';
   const marginSize = config.marginSize || '15mm';
-  const lineHeight = config.lineHeight || '1.625'; // NUEVO: Interlineado
+  const lineHeight = config.lineHeight || '1.625';
 
   const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
   const imgScale = config.imageScale || 1;
   const imgOffsetX = config.imageOffsetX || 0;
   const imgOffsetY = config.imageOffsetY || 0;
   const imgFit = config.imageFit || 'cover'; 
+  
+  // NUEVO: Variables para Galería y Layouts
+  const galleryLayout = config.galleryLayout || 'single';
+  const extraImages = config.extraImages || [];
 
   const imageStyles = {
     opacity: imgOpacity,
@@ -163,8 +156,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                       {cropMarks && <CropMarks />}
                       {slugInfo && (
                           <div className="absolute -bottom-[8mm] left-[0] w-full flex justify-between text-[8px] font-mono text-gray-500">
-                              <span>{bookTitle}</span>
-                              <span>Pág. {customPageNum || pageNum || (pageIndex + 1)}</span>
+                              <span>{bookTitle}</span><span>Pág. {customPageNum || pageNum || (pageIndex + 1)}</span>
                           </div>
                       )}
                   </div>
@@ -173,14 +165,13 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
       );
   };
 
-  // 1. Portada, Foto Completa o Blanco
   if (pageData.tipo === 'portada' || pageData.tipo === 'foto' || pageData.tipo === 'blanco') {
     const isCentered = config.layout === 'center';
     return (
       <PrintPageWrapper customPageNum={pageNum}>
         <div className={bookContainerClass} style={{ ...currentDimensions, backgroundColor: bgColor, color: textColor, fontFamily: fontFamily }}>
           {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
-          <PageNumberDisplay num={pageNum} show={showPageNumbers} tipo={pageData.tipo} />
+          <PageNumberDisplay num={pageNum} show={showPageNumbers} position={pageNumberPosition} tipo={pageData.tipo} />
           
           {pageData.tipo === 'portada' && (
               <>
@@ -193,11 +184,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
           )}
 
           {pageData.tipo === 'foto' && (
-              config.imageSrc ? (
-                  <img src={config.imageSrc} alt="Foto" className="w-full h-full" style={imageStyles} />
-              ) : (
-                  <div className="w-full h-full flex items-center justify-center opacity-30"><ImageIcon className="w-16 h-16" /></div>
-              )
+              config.imageSrc ? <img src={config.imageSrc} alt="Foto" className="w-full h-full" style={imageStyles} /> : <div className="w-full h-full flex items-center justify-center opacity-30"><ImageIcon className="w-16 h-16" /></div>
           )}
         </div>
       </PrintPageWrapper>
@@ -210,32 +197,73 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
     const nomColor = getStatusColor('nom059', config.nom059, themeColor);
     const iucnColor = getStatusColor('iucn', config.iucn, themeColor);
 
-    const ImageSide = ({ pNum }) => (
-        <div className={`relative overflow-hidden ${splitPages || forceHalf ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, fontFamily: fontFamily }}>
-             {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
-             <PageNumberDisplay num={pNum} show={showPageNumbers} tipo="ave" />
-             
-             {titlePosition === 'image' && (
-                <div 
-                  className="absolute top-0 left-0 w-full z-20 flex flex-col justify-start"
-                  style={{ backgroundColor: hexToRgba(titleBgColor, titleBgOpacity), padding: marginSize }}
-                >
-                    <h2 className="text-2xl md:text-3xl font-bold mb-1 text-white">{config.nombreComun || 'Nombre Común'}</h2>
-                    <h3 className="text-sm md:text-md italic text-gray-200 font-serif">{config.nombreCientifico || 'Nombre Científico'}</h3>
-                </div>
-             )}
-             {config.imageSrc ? (
-                <img src={config.imageSrc} alt="Ave" className="absolute inset-0 w-full h-full z-0" style={imageStyles} />
-             ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 text-center z-0" style={{ padding: marginSize }}><ImageIcon className="w-16 h-16 mb-4" /><p className="text-sm">Falta imagen</p></div>
-             )}
-        </div>
-    );
+    // MODIFICADO: Renderizador del lado de la imagen con soporte de Galería
+    const ImageSide = ({ pNum }) => {
+        const allImgs = [config.imageSrc, ...extraImages].filter(Boolean);
+        
+        return (
+            <div className={`relative overflow-hidden ${splitPages || forceHalf ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, fontFamily: fontFamily }}>
+                {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
+                <PageNumberDisplay num={pNum} show={showPageNumbers} position={pageNumberPosition} tipo="ave" />
+                
+                {titlePosition === 'image' && (
+                    <div className="absolute top-0 left-0 w-full z-20 flex flex-col justify-start" style={{ backgroundColor: hexToRgba(titleBgColor, titleBgOpacity), padding: marginSize }}>
+                        <h2 className="text-2xl md:text-3xl font-bold mb-1 text-white">{config.nombreComun || 'Nombre Común'}</h2>
+                        <h3 className="text-sm md:text-md italic text-gray-200 font-serif">{config.nombreCientifico || 'Nombre Científico'}</h3>
+                    </div>
+                )}
+                
+                {allImgs.length === 0 ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 text-center z-0" style={{ padding: marginSize }}><ImageIcon className="w-16 h-16 mb-4" /><p className="text-sm">Falta imagen</p></div>
+                ) : (
+                    <div className="absolute inset-0 z-0">
+                        {galleryLayout === 'single' && (
+                            <img src={allImgs[0]} className="w-full h-full" style={imageStyles} />
+                        )}
+                        {galleryLayout === 'grid2-v' && (
+                            <div className="flex flex-col w-full h-full">
+                                <img src={allImgs[0]} className="w-full h-1/2 object-cover border-b-2 border-white" />
+                                {allImgs[1] && <img src={allImgs[1]} className="w-full h-1/2 object-cover" />}
+                            </div>
+                        )}
+                        {galleryLayout === 'grid2-h' && (
+                            <div className="flex flex-row w-full h-full">
+                                <img src={allImgs[0]} className="w-1/2 h-full object-cover border-r-2 border-white" />
+                                {allImgs[1] && <img src={allImgs[1]} className="w-1/2 h-full object-cover" />}
+                            </div>
+                        )}
+                        {galleryLayout === 'grid3' && (
+                            <div className="flex flex-col w-full h-full">
+                                <img src={allImgs[0]} className="w-full h-1/2 object-cover border-b-2 border-white" />
+                                <div className="flex w-full h-1/2">
+                                    {allImgs[1] && <img src={allImgs[1]} className="w-1/2 h-full object-cover border-r-2 border-white" />}
+                                    {allImgs[2] && <img src={allImgs[2]} className="w-1/2 h-full object-cover" />}
+                                </div>
+                            </div>
+                        )}
+                        {galleryLayout === 'grid4' && (
+                            <div className="grid grid-cols-2 grid-rows-2 w-full h-full gap-1 bg-white">
+                                {allImgs.slice(0,4).map((img, i) => <img key={i} src={img} className="w-full h-full object-cover" />)}
+                            </div>
+                        )}
+                        {galleryLayout === 'mosaic' && (
+                            <div className="relative w-full h-full bg-gray-900">
+                                {allImgs[0] && <img src={allImgs[0]} className="absolute top-0 left-0 w-full h-[60%] object-cover opacity-80" />}
+                                {allImgs[1] && <img src={allImgs[1]} className="absolute bottom-[5%] left-[5%] w-[45%] h-[40%] object-cover border-4 border-white shadow-xl rotate-[-2deg]" />}
+                                {allImgs[2] && <img src={allImgs[2]} className="absolute bottom-[10%] right-[5%] w-[40%] h-[35%] object-cover border-4 border-white shadow-xl rotate-[3deg]" />}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
+    // MODIFICADO: Renderizador de Datos con soporte para imágenes integradas
     const DataSide = ({ pNum }) => (
         <div className={`relative flex flex-col bg-white ${splitPages || forceHalf ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, color: textColor, padding: marginSize, fontFamily: fontFamily, fontSize: baseFontSize }}>
              {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
-             <PageNumberDisplay num={pNum} show={showPageNumbers} tipo="ave" />
+             <PageNumberDisplay num={pNum} show={showPageNumbers} position={pageNumberPosition} tipo="ave" />
              {showCircle && <div className={`absolute top-0 ${isImageRight && !splitPages && !isPrintMode && !forceHalf ? 'left-0 rounded-br-full' : 'right-0 rounded-bl-full'} w-24 h-24 print:border opacity-80 z-10`} style={{ backgroundColor: themeColor }}></div>}
              
              {titlePosition !== 'image' && (
@@ -263,20 +291,26 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                 <BirdDetailItem Icon={Utensils} label="Alimentación" value={config.alimentacion} iconColor={themeColor} isBlock={isBlockField('alimentacion')} lineHeight={lineHeight} />
                 <BirdDetailItem Icon={Mic} label="Canto/Llamado" value={config.canto} iconColor={themeColor} isBlock={isBlockField('canto')} lineHeight={lineHeight} />
                 <BirdDetailItem Icon={Activity} label="Dimorfismo" value={config.dimorfismo} iconColor={themeColor} isBlock={isBlockField('dimorfismo')} lineHeight={lineHeight} />
-                <div className="pt-1"><BirdDetailItem Icon={Info} label="Descripción" value={config.descripcion} iconColor={themeColor} isBlock={isBlockField('descripcion', true)} lineHeight={lineHeight} /></div>
+                
+                {/* NUEVO: Contenedor para la Descripción + Imágenes Integradas */}
+                <div className="pt-2 relative w-full">
+                    {/* Renderizamos las imágenes de datos primero para que floten correctamente alrededor del texto */}
+                    {config.dataImages && config.dataImages.map((img, idx) => (
+                        <div key={idx} className={`mb-3 ${img.align === 'left' ? 'float-left mr-4' : img.align === 'right' ? 'float-right ml-4' : 'mx-auto block text-center clear-both'}`} style={{ maxWidth: img.align === 'center' ? '80%' : '45%' }}>
+                            <img src={img.url} className="rounded object-cover w-full shadow-sm ring-1 ring-gray-200" />
+                            {img.caption && <p className="text-[9px] italic opacity-80 mt-1 leading-tight">{img.caption}</p>}
+                        </div>
+                    ))}
+                    <BirdDetailItem Icon={Info} label="Descripción" value={config.descripcion} iconColor={themeColor} isBlock={isBlockField('descripcion', true)} lineHeight={lineHeight} />
+                    <div className="clear-both"></div>
+                </div>
              </div>
         </div>
     );
 
     if (forceHalf) {
         const SideContent = forceHalf === 'image' ? ImageSide : DataSide;
-        return (
-            <PrintPageWrapper customPageNum={pageNum}>
-                <div className={bookContainerClass} style={currentDimensions}>
-                    <SideContent pNum={pageNum} />
-                </div>
-            </PrintPageWrapper>
-        );
+        return <PrintPageWrapper customPageNum={pageNum}><div className={bookContainerClass} style={currentDimensions}><SideContent pNum={pageNum} /></div></PrintPageWrapper>;
     }
 
     const startNum = pageData._startPageNum || pageNum;
