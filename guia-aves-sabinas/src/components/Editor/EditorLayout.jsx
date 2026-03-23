@@ -663,13 +663,13 @@ export default function EditorLayout() {
                               <option value="mosaic">Mosaico (Estilo Collage)</option>
                           </select>
 
+                          {/* Ajustes de Galería Múltiple (Reorganizado para soportar cada foto como módulo) */}
                           <div className="bg-gray-800 p-2 rounded border border-gray-700 mb-3">
-                              <div className="flex items-center justify-between mb-2">
-                                  <p className="text-[10px] text-gray-500 font-bold">Foto Principal</p>
-                                  {/* NUEVO: Control de Derechos de Autor para toda la galería */}
+                              <div className="flex items-center justify-between mb-2 border-b border-gray-700 pb-2">
+                                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Ajustes Foto Principal</p>
                                   <label className="flex items-center gap-1 cursor-pointer">
                                       <input type="checkbox" checked={currentPage.config.showCopyright || false} onChange={(e) => updateCurrentPageConfig('showCopyright', e.target.checked)} className="accent-emerald-500 w-3 h-3" />
-                                      <span className="text-[10px] text-gray-300">Mostrar Créditos</span>
+                                      <span className="text-[10px] text-gray-300">Créditos</span>
                                   </label>
                               </div>
                               <label className={`flex items-center justify-center w-full gap-2 p-1.5 rounded text-xs text-white cursor-pointer transition ${isUploadingImage ? 'bg-gray-600' : 'bg-emerald-600 hover:bg-emerald-500'} mb-2 shadow`}>
@@ -680,69 +680,97 @@ export default function EditorLayout() {
                                   <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                                   <input type="text" placeholder="Link de foto..." value={currentPage.config.imageSrc || ''} onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)} className="bg-gray-900 rounded p-1 text-xs text-white w-full focus:outline-none" />
                               </div>
-                              {/* NUEVO: Input de Copyright para la principal */}
                               {currentPage.config.showCopyright && (
                                   <input type="text" placeholder="Ej: © 2026 Juan Pérez" value={currentPage.config.copyrightText || ''} onChange={(e) => updateCurrentPageConfig('copyrightText', e.target.value)} className="w-full bg-gray-900 text-[10px] text-white p-1.5 rounded mb-2 border border-gray-600 focus:outline-none" />
                               )}
-                              
-                              {(currentPage.config.galleryLayout && currentPage.config.galleryLayout !== 'single') && (
-                                  <div className="mt-3 border-t border-gray-700 pt-3">
-                                     <p className="text-[10px] text-gray-500 mb-2">Fotos Adicionales</p>
-                                     {(currentPage.config.extraImages || []).map((imgUrl, idx) => (
-                                         <div key={idx} className="bg-gray-900 p-2 rounded mb-2 border border-gray-700">
-                                             <div className="flex items-center gap-2 mb-1">
+
+                              {/* AÑADIDO: Controles de zoom y paneo para foto principal SIEMPRE VISIBLES */}
+                              <div className="grid grid-cols-1 gap-2 mt-2 bg-gray-900 p-2 rounded">
+                                  <div className="flex items-center justify-between mb-1">
+                                      <label className="text-[9px] text-gray-400">Modo de Ajuste</label>
+                                      <select value={currentPage.config.imageFit || 'cover'} onChange={(e) => updateCurrentPageConfig('imageFit', e.target.value)} className="bg-gray-800 border border-gray-600 rounded text-[9px] p-0.5 text-white focus:outline-none">
+                                          <option value="cover">Llenar</option>
+                                          <option value="contain">Ajustar Completa</option>
+                                      </select>
+                                  </div>
+                                  <div>
+                                      <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span>Zoom</span><span>{currentPage.config.imageScale || 1}x</span></label>
+                                      <input type="range" min="0.5" max="3" step="0.05" value={currentPage.config.imageScale || 1} onChange={(e) => updateCurrentPageConfig('imageScale', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                  </div>
+                                  <div>
+                                      <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span>Eje X</span><span>{currentPage.config.imageOffsetX || 0}%</span></label>
+                                      <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetX || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetX', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                  </div>
+                                  <div>
+                                      <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span>Eje Y</span><span>{currentPage.config.imageOffsetY || 0}%</span></label>
+                                      <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetY || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetY', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                  </div>
+                                  <div>
+                                      <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Droplets className="w-3 h-3"/> Opacidad</span><span>{currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1}</span></label>
+                                      <input type="range" min="0" max="1" step="0.05" value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1} onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          {(currentPage.config.galleryLayout && currentPage.config.galleryLayout !== 'single') && (
+                              <div className="bg-gray-800 p-2 rounded border border-gray-700 mb-3">
+                                 <p className="text-[10px] text-gray-500 mb-2 font-bold uppercase tracking-wider">Fotos Adicionales</p>
+                                 {(currentPage.config.extraImages || []).map((item, idx) => {
+                                     // COMPATIBILIDAD CON DATOS ANTERIORES: Convertir string a objeto
+                                     const isObj = typeof item === 'object' && item !== null;
+                                     const imgUrl = isObj ? item.url : item;
+                                     const imgScale = isObj ? (item.scale || 1) : 1;
+                                     const imgOffsetX = isObj ? (item.offsetX || 0) : 0;
+                                     const imgOffsetY = isObj ? (item.offsetY || 0) : 0;
+
+                                     const updateExtra = (key, val) => {
+                                         const newArr = [...currentPage.config.extraImages];
+                                         const current = newArr[idx];
+                                         const newObj = typeof current === 'object' && current !== null ? { ...current } : { url: current, scale: 1, offsetX: 0, offsetY: 0 };
+                                         newObj[key] = val;
+                                         newArr[idx] = newObj;
+                                         updateCurrentPageConfig('extraImages', newArr);
+                                     };
+
+                                     return (
+                                         <div key={idx} className="bg-gray-900 p-2 rounded mb-3 border border-gray-700">
+                                             <p className="text-[9px] text-gray-500 mb-1">Imagen {idx + 2}</p>
+                                             <div className="flex items-center gap-2 mb-2">
                                                  <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                                 <input type="text" placeholder={`Link de foto ${idx + 2}...`} value={imgUrl} onChange={(e) => {
-                                                     const newArr = [...currentPage.config.extraImages];
-                                                     newArr[idx] = e.target.value;
-                                                     updateCurrentPageConfig('extraImages', newArr);
-                                                 }} className="bg-transparent text-xs text-white w-full focus:outline-none" />
+                                                 <input type="text" placeholder={`Link de foto ${idx + 2}...`} value={imgUrl} onChange={(e) => updateExtra('url', e.target.value)} className="bg-transparent text-xs text-white w-full focus:outline-none" />
                                                  <button onClick={() => {
                                                      const newArr = [...currentPage.config.extraImages];
                                                      newArr.splice(idx, 1);
                                                      updateCurrentPageConfig('extraImages', newArr);
                                                  }} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3"/></button>
                                              </div>
-                                             {/* NUEVO: Input de Copyright para fotos extras */}
                                              {currentPage.config.showCopyright && (
                                                  <input type="text" placeholder={`Créditos foto ${idx + 2}...`} value={currentPage.config.extraCopyrights?.[idx] || ''} onChange={(e) => {
                                                      const newArr = [...(currentPage.config.extraCopyrights || [])];
                                                      newArr[idx] = e.target.value;
                                                      updateCurrentPageConfig('extraCopyrights', newArr);
-                                                 }} className="w-full bg-gray-800 text-[10px] text-gray-300 p-1.5 rounded border border-gray-600 focus:outline-none mt-1" />
+                                                 }} className="w-full bg-gray-800 text-[10px] text-gray-300 p-1.5 rounded border border-gray-600 focus:outline-none mb-2" />
                                              )}
+                                             
+                                             {/* AÑADIDO: Controles de zoom y paneo individuales */}
+                                             <div className="grid grid-cols-1 gap-2 bg-gray-800 p-2 rounded">
+                                                 <div>
+                                                     <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span>Zoom</span><span>{imgScale}x</span></label>
+                                                     <input type="range" min="0.5" max="3" step="0.05" value={imgScale} onChange={(e) => updateExtra('scale', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                                 </div>
+                                                 <div>
+                                                     <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span>Eje X</span><span>{imgOffsetX}%</span></label>
+                                                     <input type="range" min="-100" max="100" step="1" value={imgOffsetX} onChange={(e) => updateExtra('offsetX', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                                 </div>
+                                                 <div>
+                                                     <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span>Eje Y</span><span>{imgOffsetY}%</span></label>
+                                                     <input type="range" min="-100" max="100" step="1" value={imgOffsetY} onChange={(e) => updateExtra('offsetY', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                                 </div>
+                                             </div>
                                          </div>
-                                     ))}
-                                     <button onClick={() => updateCurrentPageConfig('extraImages', [...(currentPage.config.extraImages || []), ''])} className="w-full text-[10px] bg-gray-700 hover:bg-gray-600 text-white py-1 rounded mt-1">+ Añadir imagen a galería</button>
-                                  </div>
-                              )}
-                          </div>
-
-                          {(!currentPage.config.galleryLayout || currentPage.config.galleryLayout === 'single') && (
-                              <div className="grid grid-cols-1 gap-4 bg-gray-800 p-3 rounded border border-gray-700 mb-3">
-                                  <div>
-                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1">Modo de Ajuste</span></label>
-                                      <div className="flex bg-gray-900 rounded p-1 gap-1">
-                                          <button onClick={() => updateCurrentPageConfig('imageFit', 'cover')} className={`flex-1 text-[10px] py-1 rounded ${currentPage.config.imageFit !== 'contain' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Llenar</button>
-                                          <button onClick={() => updateCurrentPageConfig('imageFit', 'contain')} className={`flex-1 text-[10px] py-1 rounded ${currentPage.config.imageFit === 'contain' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}>Ajustar Completa</button>
-                                      </div>
-                                  </div>
-                                  <div>
-                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Maximize className="w-3 h-3"/> Zoom (Escala)</span><span>{currentPage.config.imageScale || 1}x</span></label>
-                                      <input type="range" min="0.5" max="3" step="0.05" value={currentPage.config.imageScale || 1} onChange={(e) => updateCurrentPageConfig('imageScale', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
-                                  </div>
-                                  <div>
-                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><MoveHorizontal className="w-3 h-3"/> Eje X (Horizontal)</span><span>{currentPage.config.imageOffsetX || 0}%</span></label>
-                                      <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetX || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetX', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
-                                  </div>
-                                  <div>
-                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><MoveVertical className="w-3 h-3"/> Eje Y (Vertical)</span><span>{currentPage.config.imageOffsetY || 0}%</span></label>
-                                      <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetY || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetY', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
-                                  </div>
-                                  <div>
-                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Droplets className="w-3 h-3"/> Opacidad</span><span>{currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1}</span></label>
-                                      <input type="range" min="0" max="1" step="0.05" value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1} onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
-                                  </div>
+                                     );
+                                 })}
+                                 <button onClick={() => updateCurrentPageConfig('extraImages', [...(currentPage.config.extraImages || []), {url: '', scale: 1, offsetX: 0, offsetY: 0}])} className="w-full text-[10px] bg-gray-700 hover:bg-gray-600 text-white py-2 rounded mt-1">+ Añadir imagen a galería</button>
                               </div>
                           )}
                       </ControlPanel>

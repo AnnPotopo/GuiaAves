@@ -90,20 +90,47 @@ const PageNumberDisplay = ({ num, show, tipo, position = 'default' }) => {
     return <div className={`absolute ${posClass} z-50 text-[10px] font-bold opacity-60`} style={{ fontFamily: 'monospace' }}>{num}</div>;
 };
 
-// NUEVO COMPONENTE: Motor Universal de Galería con Créditos Individuales
-const GalleryRenderer = ({ config, extraImages, imageStyles }) => {
+// MODIFICADO: Motor de galería ahora procesa zoom y paneo por imagen
+const GalleryRenderer = ({ config, extraImages }) => {
+    const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
+    
     const allImgsData = [
-        { src: config.imageSrc, copy: config.showCopyright ? config.copyrightText : null },
-        ...extraImages.map((src, i) => ({ src, copy: config.showCopyright ? (config.extraCopyrights?.[i]) : null }))
+        { 
+            src: config.imageSrc, 
+            copy: config.showCopyright ? config.copyrightText : null,
+            scale: config.imageScale || 1,
+            offsetX: config.imageOffsetX || 0,
+            offsetY: config.imageOffsetY || 0,
+            fit: config.imageFit || 'cover',
+            opacity: imgOpacity
+        },
+        ...extraImages.map((item, i) => {
+            const isObj = typeof item === 'object' && item !== null;
+            return {
+                src: isObj ? item.url : item,
+                copy: config.showCopyright ? (config.extraCopyrights?.[i]) : null,
+                scale: isObj ? (item.scale || 1) : 1,
+                offsetX: isObj ? (item.offsetX || 0) : 0,
+                offsetY: isObj ? (item.offsetY || 0) : 0,
+                fit: 'cover',
+                opacity: imgOpacity
+            };
+        })
     ].filter(img => img.src);
 
     if (allImgsData.length === 0) {
         return <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 text-center z-0"><ImageIcon className="w-16 h-16 mb-4" /><p className="text-sm">Falta imagen</p></div>;
     }
 
-    const GalleryImage = ({ data, className, imgStyle }) => (
+    const GalleryImage = ({ data, className }) => (
         <div className={`relative overflow-hidden ${className}`}>
-            <img src={data.src} className="w-full h-full object-cover" style={imgStyle} />
+            <img src={data.src} className="w-full h-full" style={{
+                objectFit: data.fit,
+                opacity: data.opacity,
+                transform: `scale(${data.scale}) translate(${data.offsetX}%, ${data.offsetY}%)`,
+                transformOrigin: 'center center',
+                transition: 'transform 0.1s ease-out'
+            }} />
             {data.copy && (
                 <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md text-white/90 text-[7px] md:text-[9px] px-2 py-1 rounded-sm z-40 shadow-lg pointer-events-none max-w-[90%] truncate">
                     {data.copy}
@@ -116,7 +143,7 @@ const GalleryRenderer = ({ config, extraImages, imageStyles }) => {
 
     return (
         <div className="absolute inset-0 z-0 bg-white">
-            {layout === 'single' && <GalleryImage data={allImgsData[0]} className="w-full h-full" imgStyle={imageStyles} />}
+            {layout === 'single' && <GalleryImage data={allImgsData[0]} className="w-full h-full" />}
             {layout === 'grid2-v' && (
                 <div className="flex flex-col w-full h-full">
                     <GalleryImage data={allImgsData[0]} className="w-full h-1/2 border-b-2 border-white" />
@@ -195,20 +222,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const marginSize = config.marginSize || '15mm';
   const lineHeight = config.lineHeight || '1.625';
 
-  const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
-  const imgScale = config.imageScale || 1;
-  const imgOffsetX = config.imageOffsetX || 0;
-  const imgOffsetY = config.imageOffsetY || 0;
-  const imgFit = config.imageFit || 'cover'; 
   const extraImages = config.extraImages || [];
-
-  const imageStyles = {
-    opacity: imgOpacity,
-    transform: `scale(${imgScale}) translate(${imgOffsetX}%, ${imgOffsetY}%)`,
-    transformOrigin: 'center center',
-    transition: 'transform 0.1s ease-out',
-    objectFit: imgFit
-  };
 
   const { showBleed = false, showMargins = false, splitPages = false, cropMarks = false, slugInfo = false } = printSettings;
 
@@ -254,7 +268,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
           )}
 
           {pageData.tipo === 'foto' && (
-              <GalleryRenderer config={config} extraImages={extraImages} imageStyles={imageStyles} />
+              <GalleryRenderer config={config} extraImages={extraImages} />
           )}
         </div>
       </PrintPageWrapper>
@@ -285,7 +299,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                     </div>
                 )}
                 
-                <GalleryRenderer config={config} extraImages={extraImages} imageStyles={imageStyles} />
+                <GalleryRenderer config={config} extraImages={extraImages} />
             </div>
         );
     };
