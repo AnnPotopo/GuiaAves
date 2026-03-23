@@ -6,12 +6,15 @@ import {
 
 const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock, lineHeight }) => {
   if (!value) return null;
+
   return (
     <div className={`flex items-start gap-3 ${isBlock ? 'flex-col gap-1.5' : ''}`} style={{ fontSize: '0.95em', lineHeight: lineHeight || '1.625' }}>
       {!isBlock ? (
         <>
           <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: iconColor || '#3b82f6' }} />
-          <div><strong>{label}:</strong> <span className="opacity-90 ml-1">{value}</span></div>
+          <div>
+            <strong>{label}:</strong> <span className="opacity-90 ml-1 whitespace-pre-wrap break-words">{value}</span>
+          </div>
         </>
       ) : (
         <>
@@ -19,31 +22,34 @@ const BirdDetailItem = ({ Icon, label, value, iconColor, isBlock, lineHeight }) 
             <Icon className="w-4 h-4 flex-shrink-0" style={{ color: iconColor || '#3b82f6' }} />
             <strong className="uppercase tracking-wider opacity-70" style={{ fontSize: '0.85em' }}>{label}</strong>
           </div>
-          <p className="opacity-90 text-justify w-full">{value}</p>
+          {/* AÑADIDO: break-words y whitespace-pre-wrap para forzar el párrafo y los saltos de línea */}
+          <p className="opacity-90 text-justify w-full whitespace-pre-wrap break-words">{value}</p>
         </>
       )}
     </div>
   );
 };
 
-const getStatusColor = (type, text, fallbackColor) => {
-  if (!text) return fallbackColor;
+const getStatusColor = (type, text) => {
+  if (!text || text.trim() === '' || text.toLowerCase().includes('no listada') || text.toLowerCase().includes('no evaluada') || text.toLowerCase().includes('datos insuficientes')) return '#9ca3af'; 
+  
   const s = text.toLowerCase();
+  
   if (type === 'nom059') {
-      if (s.includes('extinta') || s === 'e') return '#1f2937'; 
-      if (s.includes('peligro') || s === 'p') return '#ef4444'; 
-      if (s.includes('amenazada') || s === 'a') return '#f59e0b'; 
-      if (s.includes('protección') || s.includes('proteccion') || s === 'pr') return '#3b82f6'; 
+      if (s.includes('extinta') || s === 'e') return '#7f1d1d'; 
+      if (s.includes('peligro') || s === 'p') return '#dc2626'; 
+      if (s.includes('amenazada') || s === 'a') return '#ea580c'; 
+      if (s.includes('protección') || s.includes('proteccion') || s === 'pr') return '#eab308'; 
   }
   if (type === 'iucn') {
-      if (s.includes('extinta') || s.includes('ex') || s.includes('ew')) return '#1f2937'; 
       if (s.includes('crítico') || s.includes('critico') || s.includes('cr')) return '#dc2626'; 
       if (s.includes('peligro') || s.includes('en')) return '#ea580c'; 
       if (s.includes('vulnerable') || s.includes('vu')) return '#eab308'; 
       if (s.includes('casi') || s.includes('nt')) return '#84cc16'; 
       if (s.includes('menor') || s.includes('lc')) return '#22c55e'; 
+      if (s.includes('extinta') || s.includes('ex') || s.includes('ew')) return '#7f1d1d'; 
   }
-  return fallbackColor;
+  return '#9ca3af'; 
 };
 
 const hexToRgba = (hex, alpha) => {
@@ -63,21 +69,24 @@ const PrintGuides = ({ showBleed, showMargins, marginSize }) => (
 
 const CropMarks = () => (
     <>
-      <div className="absolute -top-[10mm] left-[0] w-[1px] h-[7mm] bg-black"></div><div className="absolute -top-[10mm] right-[0] w-[1px] h-[7mm] bg-black"></div>
-      <div className="absolute -bottom-[10mm] left-[0] w-[1px] h-[7mm] bg-black"></div><div className="absolute -bottom-[10mm] right-[0] w-[1px] h-[7mm] bg-black"></div>
-      <div className="absolute top-[0] -left-[10mm] w-[7mm] h-[1px] bg-black"></div><div className="absolute bottom-[0] -left-[10mm] w-[7mm] h-[1px] bg-black"></div>
-      <div className="absolute top-[0] -right-[10mm] w-[7mm] h-[1px] bg-black"></div><div className="absolute bottom-[0] -right-[10mm] w-[7mm] h-[1px] bg-black"></div>
+      <div className="absolute -top-[10mm] left-[0] w-[1px] h-[7mm] bg-black"></div>
+      <div className="absolute -top-[10mm] right-[0] w-[1px] h-[7mm] bg-black"></div>
+      <div className="absolute -bottom-[10mm] left-[0] w-[1px] h-[7mm] bg-black"></div>
+      <div className="absolute -bottom-[10mm] right-[0] w-[1px] h-[7mm] bg-black"></div>
+      <div className="absolute top-[0] -left-[10mm] w-[7mm] h-[1px] bg-black"></div>
+      <div className="absolute bottom-[0] -left-[10mm] w-[7mm] h-[1px] bg-black"></div>
+      <div className="absolute top-[0] -right-[10mm] w-[7mm] h-[1px] bg-black"></div>
+      <div className="absolute bottom-[0] -right-[10mm] w-[7mm] h-[1px] bg-black"></div>
     </>
 );
 
-// MODIFICADO: ACEPTA LA POSICIÓN DEL NÚMERO
 const PageNumberDisplay = ({ num, show, tipo, position = 'default' }) => {
     if (!show || !num || tipo === 'portada') return null;
     let posClass = 'bottom-6 ';
     if (position === 'left') posClass += 'left-8';
     else if (position === 'center') posClass += 'left-1/2 -translate-x-1/2';
     else if (position === 'right') posClass += 'right-8';
-    else posClass += (num % 2 !== 0 ? 'right-8' : 'left-8'); // default (libro)
+    else posClass += (num % 2 !== 0 ? 'right-8' : 'left-8'); 
     
     return <div className={`absolute ${posClass} z-50 text-[10px] font-bold opacity-60`} style={{ fontFamily: 'monospace' }}>{num}</div>;
 };
@@ -128,7 +137,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const imgOffsetY = config.imageOffsetY || 0;
   const imgFit = config.imageFit || 'cover'; 
   
-  // NUEVO: Variables para Galería y Layouts
   const galleryLayout = config.galleryLayout || 'single';
   const extraImages = config.extraImages || [];
 
@@ -191,13 +199,11 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
     );
   }
 
-  // 2. Ficha de Ave
   if (pageData.tipo === 'ave') {
     const isImageRight = config.imagePosition === 'right';
-    const nomColor = getStatusColor('nom059', config.nom059, themeColor);
-    const iucnColor = getStatusColor('iucn', config.iucn, themeColor);
+    const nomColor = getStatusColor('nom059', config.nom059);
+    const iucnColor = getStatusColor('iucn', config.iucn);
 
-    // MODIFICADO: Renderizador del lado de la imagen con soporte de Galería
     const ImageSide = ({ pNum }) => {
         const allImgs = [config.imageSrc, ...extraImages].filter(Boolean);
         
@@ -206,6 +212,12 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                 {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
                 <PageNumberDisplay num={pNum} show={showPageNumbers} position={pageNumberPosition} tipo="ave" />
                 
+                {config.showPlaceholderBox && (
+                    <div className="absolute top-1/2 left-0 -translate-y-1/2 w-10 h-40 bg-black/60 backdrop-blur-md border-r border-y border-white/20 flex items-center justify-center z-30 rounded-r-md shadow-lg">
+                        <span className="text-white text-[10px] font-bold tracking-[0.2em] -rotate-90 whitespace-nowrap opacity-80">PLACEHOLDER</span>
+                    </div>
+                )}
+
                 {titlePosition === 'image' && (
                     <div className="absolute top-0 left-0 w-full z-20 flex flex-col justify-start" style={{ backgroundColor: hexToRgba(titleBgColor, titleBgOpacity), padding: marginSize }}>
                         <h2 className="text-2xl md:text-3xl font-bold mb-1 text-white">{config.nombreComun || 'Nombre Común'}</h2>
@@ -259,7 +271,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
         );
     };
 
-    // MODIFICADO: Renderizador de Datos con soporte para imágenes integradas
     const DataSide = ({ pNum }) => (
         <div className={`relative flex flex-col bg-white ${splitPages || forceHalf ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, color: textColor, padding: marginSize, fontFamily: fontFamily, fontSize: baseFontSize }}>
              {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
@@ -282,27 +293,54 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                     <BirdDetailItem Icon={Scale} label="Longitud" value={config.longitud} iconColor={themeColor} isBlock={isBlockField('longitud')} lineHeight={lineHeight} />
                 </div>
 
-                <div className="bg-black/5 p-2 rounded-md space-y-1.5 my-2">
-                  <BirdDetailItem Icon={ShieldAlert} label="NOM 059" value={config.nom059} iconColor={nomColor} isBlock={isBlockField('nom059')} lineHeight={lineHeight} />
-                  <BirdDetailItem Icon={ShieldAlert} label="IUCN" value={config.iucn} iconColor={iucnColor} isBlock={isBlockField('iucn')} lineHeight={lineHeight} />
-                </div>
+                {(config.nom059 || config.iucn) && (
+                    <div className="bg-black/5 p-2 rounded-md space-y-1.5 my-2">
+                      <BirdDetailItem Icon={ShieldAlert} label="NOM 059" value={config.nom059} iconColor={nomColor} isBlock={isBlockField('nom059')} lineHeight={lineHeight} />
+                      <BirdDetailItem Icon={ShieldAlert} label="IUCN" value={config.iucn} iconColor={iucnColor} isBlock={isBlockField('iucn')} lineHeight={lineHeight} />
+                    </div>
+                )}
 
                 <BirdDetailItem Icon={MapPin} label="Hábitat" value={config.habitat} iconColor={themeColor} isBlock={isBlockField('habitat')} lineHeight={lineHeight} />
                 <BirdDetailItem Icon={Utensils} label="Alimentación" value={config.alimentacion} iconColor={themeColor} isBlock={isBlockField('alimentacion')} lineHeight={lineHeight} />
                 <BirdDetailItem Icon={Mic} label="Canto/Llamado" value={config.canto} iconColor={themeColor} isBlock={isBlockField('canto')} lineHeight={lineHeight} />
                 <BirdDetailItem Icon={Activity} label="Dimorfismo" value={config.dimorfismo} iconColor={themeColor} isBlock={isBlockField('dimorfismo')} lineHeight={lineHeight} />
                 
-                {/* NUEVO: Contenedor para la Descripción + Imágenes Integradas */}
-                <div className="pt-2 relative w-full">
-                    {/* Renderizamos las imágenes de datos primero para que floten correctamente alrededor del texto */}
-                    {config.dataImages && config.dataImages.map((img, idx) => (
-                        <div key={idx} className={`mb-3 ${img.align === 'left' ? 'float-left mr-4' : img.align === 'right' ? 'float-right ml-4' : 'mx-auto block text-center clear-both'}`} style={{ maxWidth: img.align === 'center' ? '80%' : '45%' }}>
-                            <img src={img.url} className="rounded object-cover w-full shadow-sm ring-1 ring-gray-200" />
-                            {img.caption && <p className="text-[9px] italic opacity-80 mt-1 leading-tight">{img.caption}</p>}
-                        </div>
-                    ))}
+                <div className="pt-2 relative w-full flex flex-col">
                     <BirdDetailItem Icon={Info} label="Descripción" value={config.descripcion} iconColor={themeColor} isBlock={isBlockField('descripcion', true)} lineHeight={lineHeight} />
-                    <div className="clear-both"></div>
+                    
+                    {/* NUEVO: Módulos Flexibles de Imágenes en la Descripción */}
+                    {config.dataImages && config.dataImages.length > 0 && (
+                        <div className="flex flex-col w-full mt-4">
+                            {config.dataImages.map((img, idx) => {
+                                const imgScale = img.scale || 1;
+                                const imgX = img.offsetX || 0;
+                                const imgY = img.offsetY || 0;
+                                const padClass = img.padding || 'mb-4';
+                                const isSideText = img.textMode === 'side';
+
+                                let alignClass = 'items-center';
+                                if (img.align === 'left') alignClass = 'items-start';
+                                if (img.align === 'right') alignClass = 'items-end';
+
+                                return (
+                                    <div key={idx} className={`w-full flex flex-col ${alignClass} ${padClass}`}>
+                                        <div className={`flex ${isSideText ? (img.align === 'right' ? 'flex-row-reverse gap-4' : 'flex-row gap-4') : 'flex-col items-center gap-1.5'} w-full`} style={{ maxWidth: '100%' }}>
+                                            <div className="overflow-hidden rounded shadow-sm ring-1 ring-gray-200 shrink-0" style={{ width: isSideText ? '45%' : (img.align === 'center' ? '80%' : '60%') }}>
+                                                <img src={img.url} className="w-full h-full object-cover" style={{ transform: `scale(${imgScale}) translate(${imgX}%, ${imgY}%)`, transformOrigin: 'center' }} />
+                                            </div>
+                                            {img.caption && (
+                                                <div className={`flex-1 flex flex-col ${isSideText ? 'justify-center' : 'items-center w-full'}`}>
+                                                    <p className={`text-[10px] italic opacity-80 leading-relaxed whitespace-pre-wrap break-words ${isSideText ? (img.align === 'right' ? 'text-right' : 'text-left') : 'text-center'}`} style={{ maxWidth: isSideText ? '100%' : (img.align === 'center' ? '80%' : '60%') }}>
+                                                        {img.caption}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
              </div>
         </div>

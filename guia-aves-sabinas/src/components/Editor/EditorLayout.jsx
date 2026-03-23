@@ -54,7 +54,7 @@ export default function EditorLayout() {
 
   const [bookGroups, setBookGroups] = useState([{ id: 'default', name: 'Libro Principal' }]);
   const [showPageNumbers, setShowPageNumbers] = useState(true);
-  const [pageNumberPosition, setPageNumberPosition] = useState('default'); // NUEVO
+  const [pageNumberPosition, setPageNumberPosition] = useState('default'); 
   const [signatureSize, setSignatureSize] = useState(16); 
 
   const [printSettings, setPrintSettings] = useState({
@@ -156,7 +156,7 @@ export default function EditorLayout() {
   };
 
   const handleAddPage = (tipo) => {
-    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single' } };
+    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single' } };
     setPages([...pages, newPage]);
     setCurrentPageIndex(pages.length); 
     setActiveTab(tipo === 'blanco' || tipo === 'foto' ? 'design' : 'content'); 
@@ -171,7 +171,7 @@ export default function EditorLayout() {
       const newPagesFromExcel = data.map((row, index) => ({
         id: `excel-${Date.now()}-${index}`, tipo: 'ave',
         config: {
-          groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single',
+          groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, titlePosition: 'data', titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single',
           nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '', nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
           orden: row['Orden'] || '', familia: row['Familia'] || '', iucn: row['Estado de conservación (IUCN)'] || '', nom059: row['Estado de conservación (NOM 059)'] || '',
           descripcion: row['Descripción'] || row['Descripcion'] || '', dimorfismo: row['Dimorfismo'] || '', longitud: row['Longitud'] || '',
@@ -202,7 +202,8 @@ export default function EditorLayout() {
     try {
         const options = { maxSizeMB: 2.0, maxWidthOrHeight: 2700, useWebWorker: true, fileType: 'image/jpeg', initialQuality: 0.85 };
         const compressedFile = await imageCompression(file, options);
-        const storageRef = ref(storage, `libros/${bookId}/${Date.now()}_comprimida.jpg`);
+        const fileName = `${Date.now()}_comprimida.jpg`;
+        const storageRef = ref(storage, `libros/${bookId}/${fileName}`);
         await uploadBytes(storageRef, compressedFile);
         const downloadURL = await getDownloadURL(storageRef);
         updateCurrentPageConfig('imageSrc', downloadURL);
@@ -308,7 +309,37 @@ export default function EditorLayout() {
                             <TextInput label="Nombre Común" value={currentPage.config.nombreComun} onChange={(val) => updateCurrentPageConfig('nombreComun', val)} />
                             <TextInput label="Nombre Científico" value={currentPage.config.nombreCientifico} onChange={(val) => updateCurrentPageConfig('nombreCientifico', val)} />
                             <div className="grid grid-cols-2 gap-2"><TextInput label="Orden" value={currentPage.config.orden} onChange={(val) => updateCurrentPageConfig('orden', val)} /><TextInput label="Familia" value={currentPage.config.familia} onChange={(val) => updateCurrentPageConfig('familia', val)} /></div>
-                            <div className="grid grid-cols-2 gap-2"><TextInput label="NOM 059" value={currentPage.config.nom059} onChange={(val) => updateCurrentPageConfig('nom059', val)} /><TextInput label="IUCN" value={currentPage.config.iucn} onChange={(val) => updateCurrentPageConfig('iucn', val)} /></div>
+                            
+                            {/* MODIFICADO: Dropdowns para NOM e IUCN */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
+                                    <span className="mb-1 text-gray-300 font-semibold">NOM 059</span>
+                                    <select value={currentPage.config.nom059 || ''} onChange={(e) => updateCurrentPageConfig('nom059', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                        <option value="">(Vacío)</option>
+                                        <option value="No listada">No listada</option>
+                                        <option value="Protección especial (Pr)">Protección especial (Pr)</option>
+                                        <option value="Amenazada (A)">Amenazada (A)</option>
+                                        <option value="En Peligro (P)">En Peligro (P)</option>
+                                        <option value="Probablemente Extinta (E)">Probablemente Extinta (E)</option>
+                                    </select>
+                                </label>
+                                <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
+                                    <span className="mb-1 text-gray-300 font-semibold">IUCN</span>
+                                    <select value={currentPage.config.iucn || ''} onChange={(e) => updateCurrentPageConfig('iucn', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                        <option value="">(Vacío)</option>
+                                        <option value="No evaluada (NE)">No evaluada (NE)</option>
+                                        <option value="Datos insuficientes (DD)">Datos insuficientes (DD)</option>
+                                        <option value="Preocupación menor (LC)">Preocupación menor (LC)</option>
+                                        <option value="Casi amenazada (NT)">Casi amenazada (NT)</option>
+                                        <option value="Vulnerable (VU)">Vulnerable (VU)</option>
+                                        <option value="En peligro (EN)">En peligro (EN)</option>
+                                        <option value="Peligro crítico (CR)">Peligro crítico (CR)</option>
+                                        <option value="Extinta en estado silvestre (EW)">Ext. silvestre (EW)</option>
+                                        <option value="Extinta (EX)">Extinta (EX)</option>
+                                    </select>
+                                </label>
+                            </div>
+
                             <TextInput label="Longitud" value={currentPage.config.longitud} onChange={(val) => updateCurrentPageConfig('longitud', val)} />
                             <TextInput label="Hábitat" value={currentPage.config.habitat} onChange={(val) => updateCurrentPageConfig('habitat', val)} />
                             <TextInput label="Alimentación" value={currentPage.config.alimentacion} onChange={(val) => updateCurrentPageConfig('alimentacion', val)} />
@@ -316,27 +347,24 @@ export default function EditorLayout() {
                             <TextInput label="Dimorfismo" value={currentPage.config.dimorfismo} onChange={(val) => updateCurrentPageConfig('dimorfismo', val)} isTextArea />
                             <TextInput label="Descripción" value={currentPage.config.descripcion} onChange={(val) => updateCurrentPageConfig('descripcion', val)} isTextArea />
                             
-                            {/* NUEVO PANEL: IMÁGENES INTEGRADAS EN LOS DATOS */}
-                            <ControlPanel title="Imágenes en Descripción">
+                            <ControlPanel title="Imágenes Adicionales (Debajo de la descripción)">
                                 <button 
                                     onClick={() => {
                                         const currentDataImages = currentPage.config.dataImages || [];
-                                        updateCurrentPageConfig('dataImages', [...currentDataImages, { url: '', caption: '', align: 'center' }]);
+                                        updateCurrentPageConfig('dataImages', [...currentDataImages, { url: '', caption: '', align: 'center', textMode: 'caption', scale: 1, offsetX: 0, offsetY: 0, padding: 'mb-4' }]);
                                     }}
                                     className="w-full bg-emerald-900/50 hover:bg-emerald-800 text-emerald-400 text-xs py-2 rounded flex items-center justify-center gap-2 transition"
                                 >
-                                    <ImagePlus className="w-4 h-4"/> Añadir Imagen a Textos
+                                    <ImagePlus className="w-4 h-4"/> Añadir Imagen Extra
                                 </button>
                                 
                                 {(currentPage.config.dataImages || []).map((img, idx) => (
                                     <div key={idx} className="bg-gray-800 p-2 rounded mt-2 border border-gray-700 relative">
-                                        <button 
-                                            onClick={() => {
+                                        <button onClick={() => {
                                                 const newArr = [...currentPage.config.dataImages];
                                                 newArr.splice(idx, 1);
                                                 updateCurrentPageConfig('dataImages', newArr);
-                                            }} 
-                                            className="absolute top-2 right-2 text-red-400 hover:text-red-300"
+                                            }} className="absolute top-2 right-2 text-red-400 hover:text-red-300"
                                         ><Trash2 className="w-3 h-3"/></button>
                                         <p className="text-[10px] text-gray-500 mb-2 font-bold">Imagen {idx + 1}</p>
                                         <input type="text" placeholder="Link de la imagen..." value={img.url} onChange={(e) => {
@@ -344,20 +372,61 @@ export default function EditorLayout() {
                                             newArr[idx].url = e.target.value;
                                             updateCurrentPageConfig('dataImages', newArr);
                                         }} className="w-full bg-gray-900 text-xs text-white p-1.5 rounded mb-2 border border-gray-700 focus:outline-none" />
-                                        <input type="text" placeholder="Pie de foto (Opcional)" value={img.caption} onChange={(e) => {
+                                        
+                                        <textarea placeholder="Texto o Pie de foto..." value={img.caption} onChange={(e) => {
                                             const newArr = [...currentPage.config.dataImages];
                                             newArr[idx].caption = e.target.value;
                                             updateCurrentPageConfig('dataImages', newArr);
-                                        }} className="w-full bg-gray-900 text-xs text-white p-1.5 rounded mb-2 border border-gray-700 focus:outline-none" />
-                                        <select value={img.align} onChange={(e) => {
-                                            const newArr = [...currentPage.config.dataImages];
-                                            newArr[idx].align = e.target.value;
-                                            updateCurrentPageConfig('dataImages', newArr);
-                                        }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
-                                            <option value="center">Bloque Centrado (Abajo)</option>
-                                            <option value="left">Flotar a la Izquierda (Abrazar texto)</option>
-                                            <option value="right">Flotar a la Derecha (Abrazar texto)</option>
-                                        </select>
+                                        }} className="w-full bg-gray-900 text-xs text-white p-1.5 rounded mb-2 border border-gray-700 focus:outline-none min-h-[50px] whitespace-pre-wrap break-words" />
+                                        
+                                        <div className="grid grid-cols-2 gap-2 mb-2">
+                                            <select value={img.align} onChange={(e) => {
+                                                const newArr = [...currentPage.config.dataImages];
+                                                newArr[idx].align = e.target.value;
+                                                updateCurrentPageConfig('dataImages', newArr);
+                                            }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                                <option value="center">Alinear Centro</option>
+                                                <option value="left">Alinear Izquierda</option>
+                                                <option value="right">Alinear Derecha</option>
+                                            </select>
+                                            <select value={img.textMode || 'caption'} onChange={(e) => {
+                                                const newArr = [...currentPage.config.dataImages];
+                                                newArr[idx].textMode = e.target.value;
+                                                updateCurrentPageConfig('dataImages', newArr);
+                                            }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                                <option value="caption">Pie de foto (Abajo)</option>
+                                                <option value="side">Texto a su lado</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="mb-2">
+                                            <label className="text-[10px] text-gray-400 block mb-1">Espaciado (Padding Inferior)</label>
+                                            <select value={img.padding || 'mb-4'} onChange={(e) => {
+                                                const newArr = [...currentPage.config.dataImages];
+                                                newArr[idx].padding = e.target.value;
+                                                updateCurrentPageConfig('dataImages', newArr);
+                                            }} className="w-full bg-gray-900 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 focus:outline-none">
+                                                <option value="mb-1">Muy poco</option>
+                                                <option value="mb-4">Normal</option>
+                                                <option value="mb-8">Bastante</option>
+                                                <option value="mb-12">Mucho</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-2 bg-gray-900 p-2 rounded">
+                                            <div>
+                                                <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span>Zoom</span><span>{img.scale || 1}x</span></label>
+                                                <input type="range" min="0.5" max="3" step="0.05" value={img.scale || 1} onChange={(e) => { const newArr = [...currentPage.config.dataImages]; newArr[idx].scale = parseFloat(e.target.value); updateCurrentPageConfig('dataImages', newArr); }} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span>Eje X</span><span>{img.offsetX || 0}%</span></label>
+                                                <input type="range" min="-100" max="100" step="1" value={img.offsetX || 0} onChange={(e) => { const newArr = [...currentPage.config.dataImages]; newArr[idx].offsetX = parseFloat(e.target.value); updateCurrentPageConfig('dataImages', newArr); }} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] text-gray-400 flex justify-between mb-1"><span>Eje Y</span><span>{img.offsetY || 0}%</span></label>
+                                                <input type="range" min="-100" max="100" step="1" value={img.offsetY || 0} onChange={(e) => { const newArr = [...currentPage.config.dataImages]; newArr[idx].offsetY = parseFloat(e.target.value); updateCurrentPageConfig('dataImages', newArr); }} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </ControlPanel>
@@ -422,10 +491,17 @@ export default function EditorLayout() {
                                     </select>
                                 </label>
                             </div>
+                            <label className="flex flex-col text-[11px] text-gray-400 bg-gray-800 p-1.5 rounded border border-gray-700">
+                                <span className="mb-1 text-gray-300 font-semibold">Márgenes</span>
+                                <select value={currentPage.config.marginSize || '15mm'} onChange={(e) => updateCurrentPageConfig('marginSize', e.target.value)} className="bg-gray-900 border border-gray-600 rounded text-[11px] p-1.5 text-white focus:outline-none">
+                                    <option value="10mm">10mm (Estrecho)</option>
+                                    <option value="15mm">15mm (Estándar)</option>
+                                    <option value="20mm">20mm (Amplio)</option>
+                                </select>
+                            </label>
                         </div>
                     </ControlPanel>
 
-                    {/* RESTO DE CONTROLES INTACTOS... */}
                     {currentPage.tipo === 'ave' && (
                          <ControlPanel title="Posición del Título">
                              <div className="grid grid-cols-2 gap-2">
@@ -455,6 +531,14 @@ export default function EditorLayout() {
                              <div className="grid grid-cols-2 gap-2 mb-3">
                                  <button onClick={() => updateCurrentPageConfig('imagePosition', 'left')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.imagePosition !== 'right' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Foto Izquierda</button>
                                  <button onClick={() => updateCurrentPageConfig('imagePosition', 'right')} className={`p-2 text-sm rounded flex items-center justify-center ${currentPage.config.imagePosition === 'right' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Foto Derecha</button>
+                             </div>
+                             <div className="grid grid-cols-1 gap-2 mt-2 bg-gray-800 p-2 rounded border border-gray-700">
+                                 <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                     <input type="checkbox" checked={currentPage.config.showCornerCircle !== false} onChange={(e) => updateCurrentPageConfig('showCornerCircle', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> Mostrar círculo decorativo
+                                 </label>
+                                 <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                     <input type="checkbox" checked={currentPage.config.showPlaceholderBox || false} onChange={(e) => updateCurrentPageConfig('showPlaceholderBox', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> Mostrar etiqueta PLACEHOLDER
+                                 </label>
                              </div>
                          </ControlPanel>
                     )}
@@ -488,13 +572,16 @@ export default function EditorLayout() {
                           </select>
 
                           <div className="bg-gray-800 p-2 rounded border border-gray-700 mb-3">
-                              <p className="text-[10px] text-gray-500 mb-2">Foto Principal (o única)</p>
+                              <p className="text-[10px] text-gray-500 mb-2">Foto Principal</p>
+                              <label className={`flex items-center justify-center w-full gap-2 p-1.5 rounded text-xs text-white cursor-pointer transition ${isUploadingImage ? 'bg-gray-600' : 'bg-emerald-600 hover:bg-emerald-500'} mb-2 shadow`}>
+                                  {isUploadingImage ? <><Loader2 className="w-3 h-3 animate-spin"/> Subiendo...</> : <><Upload className="w-3 h-3"/> Subir Foto Principal</>}
+                                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploadingImage} />
+                              </label>
                               <div className="flex items-center gap-2 mb-2">
                                   <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                                   <input type="text" placeholder="Link de foto..." value={currentPage.config.imageSrc || ''} onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)} className="bg-gray-900 rounded p-1 text-xs text-white w-full focus:outline-none" />
                               </div>
                               
-                              {/* Fotos Adicionales para Galería */}
                               {(currentPage.config.galleryLayout && currentPage.config.galleryLayout !== 'single') && (
                                   <>
                                      {(currentPage.config.extraImages || []).map((imgUrl, idx) => (
@@ -512,15 +599,11 @@ export default function EditorLayout() {
                                              }} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3"/></button>
                                          </div>
                                      ))}
-                                     <button 
-                                         onClick={() => updateCurrentPageConfig('extraImages', [...(currentPage.config.extraImages || []), ''])}
-                                         className="w-full text-[10px] bg-gray-700 hover:bg-gray-600 text-white py-1 rounded mt-1"
-                                     >+ Añadir imagen a galería</button>
+                                     <button onClick={() => updateCurrentPageConfig('extraImages', [...(currentPage.config.extraImages || []), ''])} className="w-full text-[10px] bg-gray-700 hover:bg-gray-600 text-white py-1 rounded mt-1">+ Añadir imagen a galería</button>
                                   </>
                               )}
                           </div>
 
-                          {/* Ajustes de Encuadre solo visibles si es Foto Única */}
                           {(!currentPage.config.galleryLayout || currentPage.config.galleryLayout === 'single') && (
                               <div className="grid grid-cols-1 gap-4 bg-gray-800 p-3 rounded border border-gray-700 mb-3">
                                   <div>
@@ -542,6 +625,10 @@ export default function EditorLayout() {
                                       <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><MoveVertical className="w-3 h-3"/> Eje Y (Vertical)</span><span>{currentPage.config.imageOffsetY || 0}%</span></label>
                                       <input type="range" min="-100" max="100" step="1" value={currentPage.config.imageOffsetY || 0} onChange={(e) => updateCurrentPageConfig('imageOffsetY', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
                                   </div>
+                                  <div>
+                                      <label className="text-[10px] text-gray-400 flex justify-between mb-1"><span className="flex items-center gap-1"><Droplets className="w-3 h-3"/> Opacidad</span><span>{currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1}</span></label>
+                                      <input type="range" min="0" max="1" step="0.05" value={currentPage.config.imageOpacity !== undefined ? currentPage.config.imageOpacity : 1} onChange={(e) => updateCurrentPageConfig('imageOpacity', parseFloat(e.target.value))} className="w-full h-1 accent-emerald-500 cursor-pointer" />
+                                  </div>
                               </div>
                           )}
                       </ControlPanel>
@@ -559,7 +646,7 @@ export default function EditorLayout() {
                 </div>
             )}
 
-            {/* TAB 4: IMPRENTA (INTACTO) */}
+            {/* TAB 4: IMPRENTA */}
             {activeTab === 'print' && sidebarOpen && (
                 <div className="px-4">
                     <div className="bg-emerald-900/40 border border-emerald-800 p-4 rounded-lg mb-4">
@@ -641,7 +728,6 @@ export default function EditorLayout() {
             </div>
         </div>
 
-        {/* MENÚ LATERAL DERECHO (ÍNDICE Y GRUPOS CON DRAG & DROP) */}
         <div className="w-64 bg-white border-l border-gray-300 flex flex-col shadow-2xl z-10 shrink-0">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                 <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wider flex items-center gap-2"><FileCheck className="w-4 h-4 text-emerald-600" />Índice</h3>
