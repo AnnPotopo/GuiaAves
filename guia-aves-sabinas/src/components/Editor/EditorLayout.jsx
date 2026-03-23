@@ -156,7 +156,7 @@ export default function EditorLayout() {
   };
 
   const handleAddPage = (tipo) => {
-    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, showCopyright: false, copyrightText: '', titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single' } };
+    const newPage = { id: Date.now().toString(), tipo: tipo, config: { groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, showCopyright: false, copyrightText: '', extraCopyrights: [], titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single' } };
     setPages([...pages, newPage]);
     setCurrentPageIndex(pages.length); 
     setActiveTab(tipo === 'blanco' || tipo === 'foto' ? 'design' : 'content'); 
@@ -171,7 +171,7 @@ export default function EditorLayout() {
       const newPagesFromExcel = data.map((row, index) => ({
         id: `excel-${Date.now()}-${index}`, tipo: 'ave',
         config: {
-          groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, showCopyright: false, copyrightText: '', titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single',
+          groupId: 'default', backgroundColor: '#ffffff', textColor: '#1f2937', themeColor: '#3b82f6', imageOpacity: 1, imageScale: 1, imageOffsetX: 0, imageOffsetY: 0, imageFit: 'cover', imagePosition: 'left', showCornerCircle: true, showPlaceholderBox: false, showCopyright: false, copyrightText: '', extraCopyrights: [], titlePosition: 'data', hideTitle: false, titleBgOpacity: 0.6, titleBgColor: '#000000', fontFamily: 'system-ui, sans-serif', fontSize: '11pt', lineHeight: '1.625', marginSize: '15mm', dataImages: [], extraImages: [], galleryLayout: 'single',
           nombreCientifico: row['Nombre cientifico'] || row['Nombre Cientifico'] || '', nombreComun: row['Nombre Comun'] || row['Nombre común'] || '',
           orden: row['Orden'] || '', familia: row['Familia'] || '', iucn: row['Estado de conservación (IUCN)'] || '', nom059: row['Estado de conservación (NOM 059)'] || '',
           descripcion: row['Descripción'] || row['Descripcion'] || '', dimorfismo: row['Dimorfismo'] || '', longitud: row['Longitud'] || '',
@@ -378,7 +378,6 @@ export default function EditorLayout() {
                                             updateCurrentPageConfig('dataImages', newArr);
                                         }} className="w-full bg-gray-900 text-xs text-white p-1.5 rounded mb-2 border border-gray-700 focus:outline-none min-h-[50px] whitespace-pre-wrap break-words" />
                                         
-                                        {/* AÑADIDO: Selectores de Fuente para el texto de la imagen */}
                                         <div className="grid grid-cols-2 gap-2 mb-2">
                                             <div>
                                                 <label className="text-[10px] text-gray-400 block mb-1">Fuente del texto</label>
@@ -468,7 +467,6 @@ export default function EditorLayout() {
                                             </select>
                                         </div>
 
-                                        {/* AÑADIDO: Selectores de Espaciado Superior e Inferior */}
                                         <div className="grid grid-cols-2 gap-2 mb-2">
                                             <div>
                                                 <label className="text-[10px] text-gray-400 block mb-1">Espaciado Superior</label>
@@ -633,16 +631,6 @@ export default function EditorLayout() {
                                  <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
                                      <input type="checkbox" checked={currentPage.config.showPlaceholderBox || false} onChange={(e) => updateCurrentPageConfig('showPlaceholderBox', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> Mostrar etiqueta PLACEHOLDER
                                  </label>
-                                 
-                                 {/* AÑADIDO: Opciones de Derechos de Autor en 'ave' */}
-                                 <div className="mt-2 border-t border-gray-700 pt-2">
-                                     <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                                         <input type="checkbox" checked={currentPage.config.showCopyright || false} onChange={(e) => updateCurrentPageConfig('showCopyright', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> Derechos de Autor (Foto)
-                                     </label>
-                                     {currentPage.config.showCopyright && (
-                                         <input type="text" placeholder="Ej: © 2026 Juan Pérez" value={currentPage.config.copyrightText || ''} onChange={(e) => updateCurrentPageConfig('copyrightText', e.target.value)} className="w-full bg-gray-900 text-xs text-white p-2 rounded mt-2 border border-gray-600 focus:outline-none" />
-                                     )}
-                                 </div>
                              </div>
                          </ControlPanel>
                     )}
@@ -676,7 +664,14 @@ export default function EditorLayout() {
                           </select>
 
                           <div className="bg-gray-800 p-2 rounded border border-gray-700 mb-3">
-                              <p className="text-[10px] text-gray-500 mb-2">Foto Principal</p>
+                              <div className="flex items-center justify-between mb-2">
+                                  <p className="text-[10px] text-gray-500 font-bold">Foto Principal</p>
+                                  {/* NUEVO: Control de Derechos de Autor para toda la galería */}
+                                  <label className="flex items-center gap-1 cursor-pointer">
+                                      <input type="checkbox" checked={currentPage.config.showCopyright || false} onChange={(e) => updateCurrentPageConfig('showCopyright', e.target.checked)} className="accent-emerald-500 w-3 h-3" />
+                                      <span className="text-[10px] text-gray-300">Mostrar Créditos</span>
+                                  </label>
+                              </div>
                               <label className={`flex items-center justify-center w-full gap-2 p-1.5 rounded text-xs text-white cursor-pointer transition ${isUploadingImage ? 'bg-gray-600' : 'bg-emerald-600 hover:bg-emerald-500'} mb-2 shadow`}>
                                   {isUploadingImage ? <><Loader2 className="w-3 h-3 animate-spin"/> Subiendo...</> : <><Upload className="w-3 h-3"/> Subir Foto Principal</>}
                                   <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploadingImage} />
@@ -685,40 +680,43 @@ export default function EditorLayout() {
                                   <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                                   <input type="text" placeholder="Link de foto..." value={currentPage.config.imageSrc || ''} onChange={(e) => updateCurrentPageConfig('imageSrc', e.target.value)} className="bg-gray-900 rounded p-1 text-xs text-white w-full focus:outline-none" />
                               </div>
+                              {/* NUEVO: Input de Copyright para la principal */}
+                              {currentPage.config.showCopyright && (
+                                  <input type="text" placeholder="Ej: © 2026 Juan Pérez" value={currentPage.config.copyrightText || ''} onChange={(e) => updateCurrentPageConfig('copyrightText', e.target.value)} className="w-full bg-gray-900 text-[10px] text-white p-1.5 rounded mb-2 border border-gray-600 focus:outline-none" />
+                              )}
                               
                               {(currentPage.config.galleryLayout && currentPage.config.galleryLayout !== 'single') && (
-                                  <>
+                                  <div className="mt-3 border-t border-gray-700 pt-3">
+                                     <p className="text-[10px] text-gray-500 mb-2">Fotos Adicionales</p>
                                      {(currentPage.config.extraImages || []).map((imgUrl, idx) => (
-                                         <div key={idx} className="flex items-center gap-2 mb-2">
-                                             <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                             <input type="text" placeholder={`Link de foto ${idx + 2}...`} value={imgUrl} onChange={(e) => {
-                                                 const newArr = [...currentPage.config.extraImages];
-                                                 newArr[idx] = e.target.value;
-                                                 updateCurrentPageConfig('extraImages', newArr);
-                                             }} className="bg-gray-900 rounded p-1 text-xs text-white w-full focus:outline-none" />
-                                             <button onClick={() => {
-                                                 const newArr = [...currentPage.config.extraImages];
-                                                 newArr.splice(idx, 1);
-                                                 updateCurrentPageConfig('extraImages', newArr);
-                                             }} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3"/></button>
+                                         <div key={idx} className="bg-gray-900 p-2 rounded mb-2 border border-gray-700">
+                                             <div className="flex items-center gap-2 mb-1">
+                                                 <LinkIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                                 <input type="text" placeholder={`Link de foto ${idx + 2}...`} value={imgUrl} onChange={(e) => {
+                                                     const newArr = [...currentPage.config.extraImages];
+                                                     newArr[idx] = e.target.value;
+                                                     updateCurrentPageConfig('extraImages', newArr);
+                                                 }} className="bg-transparent text-xs text-white w-full focus:outline-none" />
+                                                 <button onClick={() => {
+                                                     const newArr = [...currentPage.config.extraImages];
+                                                     newArr.splice(idx, 1);
+                                                     updateCurrentPageConfig('extraImages', newArr);
+                                                 }} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3"/></button>
+                                             </div>
+                                             {/* NUEVO: Input de Copyright para fotos extras */}
+                                             {currentPage.config.showCopyright && (
+                                                 <input type="text" placeholder={`Créditos foto ${idx + 2}...`} value={currentPage.config.extraCopyrights?.[idx] || ''} onChange={(e) => {
+                                                     const newArr = [...(currentPage.config.extraCopyrights || [])];
+                                                     newArr[idx] = e.target.value;
+                                                     updateCurrentPageConfig('extraCopyrights', newArr);
+                                                 }} className="w-full bg-gray-800 text-[10px] text-gray-300 p-1.5 rounded border border-gray-600 focus:outline-none mt-1" />
+                                             )}
                                          </div>
                                      ))}
                                      <button onClick={() => updateCurrentPageConfig('extraImages', [...(currentPage.config.extraImages || []), ''])} className="w-full text-[10px] bg-gray-700 hover:bg-gray-600 text-white py-1 rounded mt-1">+ Añadir imagen a galería</button>
-                                  </>
+                                  </div>
                               )}
                           </div>
-                          
-                          {/* AÑADIDO: Opciones de Derechos de Autor para la página exclusiva de 'foto' */}
-                          {currentPage.tipo === 'foto' && (
-                              <div className="bg-gray-800 p-2 rounded border border-gray-700 mb-3">
-                                  <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                                      <input type="checkbox" checked={currentPage.config.showCopyright || false} onChange={(e) => updateCurrentPageConfig('showCopyright', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> Derechos de Autor
-                                  </label>
-                                  {currentPage.config.showCopyright && (
-                                      <input type="text" placeholder="Ej: © 2026 Juan Pérez" value={currentPage.config.copyrightText || ''} onChange={(e) => updateCurrentPageConfig('copyrightText', e.target.value)} className="w-full bg-gray-900 text-xs text-white p-2 rounded mt-2 border border-gray-600 focus:outline-none" />
-                                  )}
-                              </div>
-                          )}
 
                           {(!currentPage.config.galleryLayout || currentPage.config.galleryLayout === 'single') && (
                               <div className="grid grid-cols-1 gap-4 bg-gray-800 p-3 rounded border border-gray-700 mb-3">

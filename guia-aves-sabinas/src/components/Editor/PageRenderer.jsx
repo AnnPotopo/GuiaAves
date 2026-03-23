@@ -90,6 +90,70 @@ const PageNumberDisplay = ({ num, show, tipo, position = 'default' }) => {
     return <div className={`absolute ${posClass} z-50 text-[10px] font-bold opacity-60`} style={{ fontFamily: 'monospace' }}>{num}</div>;
 };
 
+// NUEVO COMPONENTE: Motor Universal de Galería con Créditos Individuales
+const GalleryRenderer = ({ config, extraImages, imageStyles }) => {
+    const allImgsData = [
+        { src: config.imageSrc, copy: config.showCopyright ? config.copyrightText : null },
+        ...extraImages.map((src, i) => ({ src, copy: config.showCopyright ? (config.extraCopyrights?.[i]) : null }))
+    ].filter(img => img.src);
+
+    if (allImgsData.length === 0) {
+        return <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 text-center z-0"><ImageIcon className="w-16 h-16 mb-4" /><p className="text-sm">Falta imagen</p></div>;
+    }
+
+    const GalleryImage = ({ data, className, imgStyle }) => (
+        <div className={`relative overflow-hidden ${className}`}>
+            <img src={data.src} className="w-full h-full object-cover" style={imgStyle} />
+            {data.copy && (
+                <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md text-white/90 text-[7px] md:text-[9px] px-2 py-1 rounded-sm z-40 shadow-lg pointer-events-none max-w-[90%] truncate">
+                    {data.copy}
+                </div>
+            )}
+        </div>
+    );
+
+    const layout = config.galleryLayout || 'single';
+
+    return (
+        <div className="absolute inset-0 z-0 bg-white">
+            {layout === 'single' && <GalleryImage data={allImgsData[0]} className="w-full h-full" imgStyle={imageStyles} />}
+            {layout === 'grid2-v' && (
+                <div className="flex flex-col w-full h-full">
+                    <GalleryImage data={allImgsData[0]} className="w-full h-1/2 border-b-2 border-white" />
+                    {allImgsData[1] && <GalleryImage data={allImgsData[1]} className="w-full h-1/2" />}
+                </div>
+            )}
+            {layout === 'grid2-h' && (
+                <div className="flex flex-row w-full h-full">
+                    <GalleryImage data={allImgsData[0]} className="w-1/2 h-full border-r-2 border-white" />
+                    {allImgsData[1] && <GalleryImage data={allImgsData[1]} className="w-1/2 h-full" />}
+                </div>
+            )}
+            {layout === 'grid3' && (
+                <div className="flex flex-col w-full h-full">
+                    <GalleryImage data={allImgsData[0]} className="w-full h-1/2 border-b-2 border-white" />
+                    <div className="flex w-full h-1/2">
+                        {allImgsData[1] && <GalleryImage data={allImgsData[1]} className="w-1/2 h-full border-r-2 border-white" />}
+                        {allImgsData[2] && <GalleryImage data={allImgsData[2]} className="w-1/2 h-full" />}
+                    </div>
+                </div>
+            )}
+            {layout === 'grid4' && (
+                <div className="grid grid-cols-2 grid-rows-2 w-full h-full gap-1 bg-white">
+                    {allImgsData.slice(0,4).map((data, i) => <GalleryImage key={i} data={data} className="w-full h-full" />)}
+                </div>
+            )}
+            {layout === 'mosaic' && (
+                <div className="relative w-full h-full bg-gray-900">
+                    {allImgsData[0] && <GalleryImage data={allImgsData[0]} className="absolute top-0 left-0 w-full h-[60%] opacity-80" />}
+                    {allImgsData[1] && <GalleryImage data={allImgsData[1]} className="absolute bottom-[5%] left-[5%] w-[45%] h-[40%] border-4 border-white shadow-xl rotate-[-2deg]" />}
+                    {allImgsData[2] && <GalleryImage data={allImgsData[2]} className="absolute bottom-[10%] right-[5%] w-[40%] h-[35%] border-4 border-white shadow-xl rotate-[3deg]" />}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function PageRenderer({ pageData, bookSize = 'trade', printSettings = {}, isPrintMode = false, pageIndex = 0, bookTitle = "Guía", forceHalf = null, pageNum = null, showPageNumbers = true, pageNumberPosition = 'default' }) {
   if (!pageData) return null;
 
@@ -136,8 +200,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
   const imgOffsetX = config.imageOffsetX || 0;
   const imgOffsetY = config.imageOffsetY || 0;
   const imgFit = config.imageFit || 'cover'; 
-  
-  const galleryLayout = config.galleryLayout || 'single';
   const extraImages = config.extraImages || [];
 
   const imageStyles = {
@@ -181,13 +243,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
           {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
           <PageNumberDisplay num={pageNum} show={showPageNumbers} position={pageNumberPosition} tipo={pageData.tipo} />
           
-          {/* NUEVO: Recuadro de Copyright en la página tipo 'foto' */}
-          {pageData.tipo === 'foto' && config.showCopyright && config.copyrightText && (
-             <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white/90 text-[9px] px-2.5 py-1 rounded-sm z-40 shadow-lg">
-                 {config.copyrightText}
-             </div>
-          )}
-
           {pageData.tipo === 'portada' && (
               <>
                   <div className={`absolute inset-0 flex flex-col z-10 ${isCentered ? 'items-center justify-center text-center' : 'justify-end'}`} style={{ padding: marginSize }}>
@@ -199,7 +254,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
           )}
 
           {pageData.tipo === 'foto' && (
-              config.imageSrc ? <img src={config.imageSrc} alt="Foto" className="w-full h-full" style={imageStyles} /> : <div className="w-full h-full flex items-center justify-center opacity-30"><ImageIcon className="w-16 h-16" /></div>
+              <GalleryRenderer config={config} extraImages={extraImages} imageStyles={imageStyles} />
           )}
         </div>
       </PrintPageWrapper>
@@ -212,8 +267,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
     const iucnColor = getStatusColor('iucn', config.iucn);
 
     const ImageSide = ({ pNum }) => {
-        const allImgs = [config.imageSrc, ...extraImages].filter(Boolean);
-        
         return (
             <div className={`relative overflow-hidden ${splitPages || forceHalf ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, fontFamily: fontFamily }}>
                 {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
@@ -225,13 +278,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                     </div>
                 )}
 
-                {/* NUEVO: Recuadro de Copyright en el lado de la imagen de 'ave' */}
-                {config.showCopyright && config.copyrightText && (
-                    <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white/90 text-[9px] px-2.5 py-1 rounded-sm z-40 shadow-lg">
-                        {config.copyrightText}
-                    </div>
-                )}
-
                 {!hideTitle && titlePosition === 'image' && (
                     <div className="absolute top-0 left-0 w-full z-20 flex flex-col justify-start" style={{ backgroundColor: hexToRgba(titleBgColor, titleBgOpacity), padding: marginSize }}>
                         <h2 className="text-2xl md:text-3xl font-bold mb-1 text-white">{config.nombreComun || 'Nombre Común'}</h2>
@@ -239,48 +285,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                     </div>
                 )}
                 
-                {allImgs.length === 0 ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 text-center z-0" style={{ padding: marginSize }}><ImageIcon className="w-16 h-16 mb-4" /><p className="text-sm">Falta imagen</p></div>
-                ) : (
-                    <div className="absolute inset-0 z-0">
-                        {galleryLayout === 'single' && (
-                            <img src={allImgs[0]} className="w-full h-full" style={imageStyles} />
-                        )}
-                        {galleryLayout === 'grid2-v' && (
-                            <div className="flex flex-col w-full h-full">
-                                <img src={allImgs[0]} className="w-full h-1/2 object-cover border-b-2 border-white" />
-                                {allImgs[1] && <img src={allImgs[1]} className="w-full h-1/2 object-cover" />}
-                            </div>
-                        )}
-                        {galleryLayout === 'grid2-h' && (
-                            <div className="flex flex-row w-full h-full">
-                                <img src={allImgs[0]} className="w-1/2 h-full object-cover border-r-2 border-white" />
-                                {allImgs[1] && <img src={allImgs[1]} className="w-1/2 h-full object-cover" />}
-                            </div>
-                        )}
-                        {galleryLayout === 'grid3' && (
-                            <div className="flex flex-col w-full h-full">
-                                <img src={allImgs[0]} className="w-full h-1/2 object-cover border-b-2 border-white" />
-                                <div className="flex w-full h-1/2">
-                                    {allImgs[1] && <img src={allImgs[1]} className="w-1/2 h-full object-cover border-r-2 border-white" />}
-                                    {allImgs[2] && <img src={allImgs[2]} className="w-1/2 h-full object-cover" />}
-                                </div>
-                            </div>
-                        )}
-                        {galleryLayout === 'grid4' && (
-                            <div className="grid grid-cols-2 grid-rows-2 w-full h-full gap-1 bg-white">
-                                {allImgs.slice(0,4).map((img, i) => <img key={i} src={img} className="w-full h-full object-cover" />)}
-                            </div>
-                        )}
-                        {galleryLayout === 'mosaic' && (
-                            <div className="relative w-full h-full bg-gray-900">
-                                {allImgs[0] && <img src={allImgs[0]} className="absolute top-0 left-0 w-full h-[60%] object-cover opacity-80" />}
-                                {allImgs[1] && <img src={allImgs[1]} className="absolute bottom-[5%] left-[5%] w-[45%] h-[40%] object-cover border-4 border-white shadow-xl rotate-[-2deg]" />}
-                                {allImgs[2] && <img src={allImgs[2]} className="absolute bottom-[10%] right-[5%] w-[40%] h-[35%] object-cover border-4 border-white shadow-xl rotate-[3deg]" />}
-                            </div>
-                        )}
-                    </div>
-                )}
+                <GalleryRenderer config={config} extraImages={extraImages} imageStyles={imageStyles} />
             </div>
         );
     };
@@ -339,7 +344,6 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                                 const vAlignClass = img.textVerticalAlign === 'top' ? 'justify-start' : (img.textVerticalAlign === 'bottom' ? 'justify-end' : 'justify-center');
                                 const imgWidth = img.widthSize || (isSideText ? '45%' : (img.align === 'center' ? '80%' : '60%'));
                                 
-                                // APLICACIÓN DE FUENTE Y TAMAÑO ESPECÍFICOS
                                 const captionStyle = {
                                     maxWidth: isSideText ? '100%' : imgWidth,
                                     fontSize: img.captionFontSize || '10px',
