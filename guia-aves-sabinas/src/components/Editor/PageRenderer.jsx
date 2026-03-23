@@ -90,7 +90,6 @@ const PageNumberDisplay = ({ num, show, tipo, position = 'default' }) => {
     return <div className={`absolute ${posClass} z-50 text-[10px] font-bold opacity-60`} style={{ fontFamily: 'monospace' }}>{num}</div>;
 };
 
-// MODIFICADO: Motor de galería ahora procesa zoom y paneo por imagen
 const GalleryRenderer = ({ config, extraImages }) => {
     const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
     
@@ -112,7 +111,8 @@ const GalleryRenderer = ({ config, extraImages }) => {
                 scale: isObj ? (item.scale || 1) : 1,
                 offsetX: isObj ? (item.offsetX || 0) : 0,
                 offsetY: isObj ? (item.offsetY || 0) : 0,
-                fit: 'cover',
+                // AÑADIDO: Ahora se lee la propiedad 'fit' de cada imagen individual extra
+                fit: isObj && item.fit ? item.fit : 'cover',
                 opacity: imgOpacity
             };
         })
@@ -267,8 +267,26 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
               </>
           )}
 
+          {/* MODIFICADO: Estructura de la página 'foto' que empuja la galería si hay título */}
           {pageData.tipo === 'foto' && (
-              <GalleryRenderer config={config} extraImages={extraImages} />
+              <div className="absolute inset-0 flex flex-col z-10 w-full h-full">
+                  {config.titulo && (
+                      <div className="w-full z-20 shrink-0" style={{ padding: `${marginSize} ${marginSize} 0 ${marginSize}` }}>
+                          <div className="border-b pb-2 mb-2" style={{ borderColor: `${themeColor}33` }}>
+                              <h2 className="text-2xl md:text-3xl font-bold" style={{ color: config.textColor || '#1f2937' }}>{config.titulo}</h2>
+                          </div>
+                      </div>
+                  )}
+                  <div className="relative flex-1 w-full z-0">
+                      <GalleryRenderer config={config} extraImages={extraImages} />
+                      {/* Recuadro de Copyright Global por si la galería está en modo 'single' básico */}
+                      {config.showCopyright && config.copyrightText && (
+                         <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white/90 text-[9px] px-2.5 py-1 rounded-sm z-40 shadow-lg pointer-events-none">
+                             {config.copyrightText}
+                         </div>
+                      )}
+                  </div>
+              </div>
           )}
         </div>
       </PrintPageWrapper>
@@ -289,6 +307,12 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                 {config.showPlaceholderBox && (
                     <div className="absolute top-1/2 left-0 -translate-y-1/2 w-10 h-40 bg-black/60 backdrop-blur-md border-r border-y border-white/20 flex items-center justify-center z-30 rounded-r-md shadow-lg">
                         <span className="text-white text-[10px] font-bold tracking-[0.2em] -rotate-90 whitespace-nowrap opacity-80">PLACEHOLDER</span>
+                    </div>
+                )}
+
+                {config.showCopyright && config.copyrightText && (
+                    <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white/90 text-[9px] px-2.5 py-1 rounded-sm z-40 shadow-lg">
+                        {config.copyrightText}
                     </div>
                 )}
 
