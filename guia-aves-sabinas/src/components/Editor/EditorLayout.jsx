@@ -64,7 +64,6 @@ export default function EditorLayout() {
   const [bookGroups, setBookGroups] = useState([{ id: 'default', name: 'Libro Principal' }]);
   const [showPageNumbers, setShowPageNumbers] = useState(true);
   const [pageNumberPosition, setPageNumberPosition] = useState('default'); 
-  const [signatureSize, setSignatureSize] = useState(16); 
 
   const [printSettings, setPrintSettings] = useState({
       showBleed: false, 
@@ -88,7 +87,6 @@ export default function EditorLayout() {
           if (data.grupos) setBookGroups(data.grupos);
           if (data.showPageNumbers !== undefined) setShowPageNumbers(data.showPageNumbers);
           if (data.pageNumberPosition) setPageNumberPosition(data.pageNumberPosition);
-          if (data.signatureSize) setSignatureSize(data.signatureSize);
         } else {
           alert("No se encontró este libro en la base de datos.");
         }
@@ -290,7 +288,6 @@ export default function EditorLayout() {
           grupos: bookGroups, 
           showPageNumbers, 
           pageNumberPosition, 
-          signatureSize, 
           fechaActualizacion: new Date().toLocaleDateString() 
       }, { merge: true });
       alert(`¡Libro guardado en la nube con éxito!`);
@@ -329,30 +326,57 @@ export default function EditorLayout() {
     }
   };
 
+  // NUEVO: Motor de Imposición basado en Grupos de Índice (Bonches)
   const getImposedSpreads = () => {
-      const phys = [];
-      pagesWithNumbers.forEach(p => {
-          if (p.tipo === 'ave') {
-              const isImageRight = p.config.imagePosition === 'right';
-              phys.push({ parent: p, forceHalf: isImageRight ? 'data' : 'image', pageNum: p._startPageNum });
-              phys.push({ parent: p, forceHalf: isImageRight ? 'image' : 'data', pageNum: p._startPageNum + 1 });
-          } else { 
-              phys.push({ parent: p, forceHalf: null, pageNum: p._startPageNum }); 
+      const spreads = [];
+      
+      bookGroups.forEach((group, groupIndex) => {
+          const groupPagesWithNumbers = pagesWithNumbers.filter(p => (p.config.groupId || 'default') === group.id);
+          if (groupPagesWithNumbers.length === 0) return;
+
+          const phys = [];
+          groupPagesWithNumbers.forEach(p => {
+              if (p.tipo === 'ave') {
+                  const isImageRight = p.config.imagePosition === 'right';
+                  phys.push({ parent: p, forceHalf: isImageRight ? 'data' : 'image', pageNum: p._startPageNum });
+                  phys.push({ parent: p, forceHalf: isImageRight ? 'image' : 'data', pageNum: p._startPageNum + 1 });
+              } else { 
+                  phys.push({ parent: p, forceHalf: null, pageNum: p._startPageNum }); 
+              }
+          });
+
+          // Rellenar con páginas en blanco para múltiplo de 4
+          let N = phys.length;
+          const remainder = N % 4;
+          if (remainder !== 0) {
+              const padCount = 4 - remainder;
+              for (let i = 0; i < padCount; i++) {
+                  phys.push({ isBlankPad: true, pageNum: '-' });
+              }
+          }
+          
+          N = phys.length;
+          const totalHojas = N / 4;
+
+          for (let i = 1; i <= totalHojas; i++) {
+              // Frente
+              spreads.push({ 
+                  left: phys[N - 2 * i + 1], 
+                  right: phys[2 * i - 2], 
+                  sigIndex: groupIndex + 1,
+                  sheetIndex: i,
+                  side: 'Frente'
+              });
+              // Atrás
+              spreads.push({ 
+                  left: phys[2 * i - 1], 
+                  right: phys[N - 2 * i], 
+                  sigIndex: groupIndex + 1,
+                  sheetIndex: i,
+                  side: 'Atrás'
+              });
           }
       });
-      const spreads = [];
-      const numSigs = Math.ceil(phys.length / signatureSize);
-      for (let s = 0; s < numSigs; s++) {
-          const sigPages = phys.slice(s * signatureSize, (s + 1) * signatureSize);
-          while (sigPages.length < signatureSize) { 
-              sigPages.push({ isBlankPad: true, pageNum: '-' }); 
-          }
-          for (let i = 0; i < signatureSize / 2; i++) {
-              const leftIdx = i % 2 === 0 ? signatureSize - 1 - i : i;
-              const rightIdx = i % 2 === 0 ? i : signatureSize - 1 - i;
-              spreads.push({ left: sigPages[leftIdx], right: sigPages[rightIdx], sigIndex: s + 1 });
-          }
-      }
       return spreads;
   };
 
@@ -408,7 +432,7 @@ export default function EditorLayout() {
             {activeTab === 'pages' && (
                <div className={`${!sidebarOpen && 'flex flex-col items-center'} px-3`}>
                   <div className="mb-6 border-b border-gray-800 pb-4">
-                      <p className={`text-xs uppercase tracking-wider text-gray-500 font-bold mb-3 ${!sidebarOpen && 'hidden'}`}>Asignar Grupo</p>
+                      <p className={`text-xs uppercase tracking-wider text-gray-500 font-bold mb-3 ${!sidebarOpen && 'hidden'}`}>Asignar Grupo (Bonche)</p>
                       {sidebarOpen && (
                           <select 
                               value={currentPage?.config.groupId || 'default'} 
@@ -454,6 +478,7 @@ export default function EditorLayout() {
                   </button>
               </div>
             )}
+
             {activeTab === 'content' && sidebarOpen && currentPage && (
                 <div className="px-4">
                     <div className="mb-4 bg-gray-800 p-3 rounded flex justify-between items-center">
@@ -798,7 +823,8 @@ export default function EditorLayout() {
                                 disabled={!showPageNumbers} 
                                 className="bg-gray-900 border border-gray-600 rounded text-[10px] p-1 text-white focus:outline-none w-1/2"
                             >
-                                <option value="default">Alternado (Libro)</option>
+                                <option value="default">Alternado (Exterior)</option>
+                                <option value="inner">Alternado (Interior Lomo)</option>
                                 <option value="left">Siempre Izq.</option>
                                 <option value="center">Centro</option>
                                 <option value="right">Siempre Der.</option>
@@ -946,21 +972,6 @@ export default function EditorLayout() {
                                      <input type="checkbox" checked={currentPage.config.showPlaceholderBox || false} onChange={(e) => updateCurrentPageConfig('showPlaceholderBox', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> 
                                      Mostrar etiqueta PLACEHOLDER
                                  </label>
-                                 <div className="mt-2 border-t border-gray-700 pt-2">
-                                     <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                                         <input type="checkbox" checked={currentPage.config.showCopyright || false} onChange={(e) => updateCurrentPageConfig('showCopyright', e.target.checked)} className="accent-emerald-500 w-4 h-4" /> 
-                                         Derechos de Autor (Foto)
-                                     </label>
-                                     {currentPage.config.showCopyright && (
-                                         <input 
-                                             type="text" 
-                                             placeholder="Ej: © 2026 Juan Pérez" 
-                                             value={currentPage.config.copyrightText || ''} 
-                                             onChange={(e) => updateCurrentPageConfig('copyrightText', e.target.value)} 
-                                             className="w-full bg-gray-900 text-xs text-white p-2 rounded mt-2 border border-gray-600 focus:outline-none" 
-                                         />
-                                     )}
-                                 </div>
                              </div>
                          </ControlPanel>
                     )}
@@ -1272,7 +1283,9 @@ export default function EditorLayout() {
                         <div className="flex flex-col gap-16">
                             {getImposedSpreads().map((spread, idx) => (
                                 <div key={idx} className="flex flex-col items-center">
-                                    <p className="text-xs font-mono text-gray-500 mb-2 bg-white/50 px-3 py-1 rounded-full">Firma {spread.sigIndex} | Pliego de Impresión {idx + 1}</p>
+                                    <p className="text-xs font-mono text-gray-500 mb-2 bg-white/50 px-3 py-1 rounded-full">
+                                        Grupo {spread.sigIndex} | Hoja {spread.sheetIndex} - {spread.side}
+                                    </p>
                                     <div className="flex gap-0 shadow-2xl">
                                         <PageRenderer pageData={spread.left.parent} forceHalf={spread.left.forceHalf} pageNum={spread.left.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={false} showPageNumbers={showPageNumbers} pageNumberPosition={pageNumberPosition} />
                                         <PageRenderer pageData={spread.right.parent} forceHalf={spread.right.forceHalf} pageNum={spread.right.pageNum} bookSize={bookSize} printSettings={{...printSettings, splitPages: true}} isPrintMode={false} showPageNumbers={showPageNumbers} pageNumberPosition={pageNumberPosition} />

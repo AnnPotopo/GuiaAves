@@ -82,15 +82,17 @@ const CropMarks = () => (
 const PageNumberDisplay = ({ num, show, tipo, position = 'default' }) => {
     if (!show || !num || tipo === 'portada') return null;
     let posClass = 'bottom-6 ';
+    
+    // MODIFICADO: Sistema de posicionamiento de números actualizado
     if (position === 'left') posClass += 'left-8';
     else if (position === 'center') posClass += 'left-1/2 -translate-x-1/2';
     else if (position === 'right') posClass += 'right-8';
-    else posClass += (num % 2 !== 0 ? 'right-8' : 'left-8'); 
+    else if (position === 'inner') posClass += (num % 2 !== 0 ? 'left-8' : 'right-8'); // Alternado Interior (Lomo)
+    else posClass += (num % 2 !== 0 ? 'right-8' : 'left-8'); // Alternado Exterior (default)
     
     return <div className={`absolute ${posClass} z-50 text-[10px] font-bold opacity-60`} style={{ fontFamily: 'monospace' }}>{num}</div>;
 };
 
-// Motor de galería optimizado (Usa w-full h-full para respetar los márgenes dinámicos)
 const GalleryRenderer = ({ config, extraImages }) => {
     const imgOpacity = config.imageOpacity !== undefined ? config.imageOpacity : 1;
     
@@ -142,7 +144,7 @@ const GalleryRenderer = ({ config, extraImages }) => {
     const layout = config.galleryLayout || 'single';
 
     return (
-        <div className="w-full h-full relative z-0 bg-white">
+        <div className="absolute inset-0 z-0 bg-white">
             {layout === 'single' && <GalleryImage data={allImgsData[0]} className="w-full h-full" />}
             {layout === 'grid2-v' && (
                 <div className="flex flex-col w-full h-full">
@@ -276,13 +278,11 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
                                   <h2 className="text-2xl md:text-3xl font-bold" style={{ color: config.textColor || '#1f2937' }}>{config.titulo}</h2>
                               </div>
                           </div>
-                          {/* Galería con padding para respetar el título */}
                           <div className="relative flex-1 w-full z-0 pb-4" style={{ padding: `0 ${marginSize} ${marginSize} ${marginSize}` }}>
                               <GalleryRenderer config={config} extraImages={extraImages} />
                           </div>
                       </>
                   ) : (
-                      /* Galería a sangre completa si no hay título */
                       <div className="w-full h-full relative z-0">
                           <GalleryRenderer config={config} extraImages={extraImages} />
                       </div>
@@ -301,7 +301,7 @@ export default function PageRenderer({ pageData, bookSize = 'trade', printSettin
 
     const ImageSide = ({ pNum }) => {
         return (
-            <div className={`relative flex flex-col overflow-hidden ${splitPages || forceHalf ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, fontFamily: fontFamily }}>
+            <div className={`relative overflow-hidden ${splitPages || forceHalf ? 'w-full h-full' : 'w-1/2 h-full'}`} style={{ backgroundColor: bgColor, fontFamily: fontFamily }}>
                 {!isPrintMode && <PrintGuides showBleed={showBleed} showMargins={showMargins} marginSize={marginSize} />}
                 <PageNumberDisplay num={pNum} show={showPageNumbers} position={pageNumberPosition} tipo="ave" />
                 
