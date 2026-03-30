@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { Mic, Library, Square, AlertCircle, Loader2, Award, X, Check, MapPin, Search, Volume2, Info, Calendar, Navigation, Edit3, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,16 +17,21 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 export default function BirdApp() {
     const navigate = useNavigate();
+    const [user, setUser] = useState(null);
+
     const [activeTab, setActiveTab] = useState('identify');
     const [avesBook, setAvesBook] = useState([]);
-    const [progreso, setProgreso] = useState(() => JSON.parse(localStorage.getItem('progresoAves')) || {});
+    const [progreso, setProgreso] = useState({});
     const [loadingDB, setLoadingDB] = useState(true);
 
     // Ubicación
     const [ubicacion, setUbicacion] = useState('Sabinas Hidalgo, N.L.');
+    const [latitud, setLatitud] = useState(26.4953);
+    const [longitud, setLongitud] = useState(-100.1755);
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [tempLocation, setTempLocation] = useState('');
 
@@ -51,21 +57,40 @@ export default function BirdApp() {
     const [audioCanto, setAudioCanto] = useState('');
     const [buscandoAudio, setBuscandoAudio] = useState(false);
 
+    // --- SEGURIDAD Y CARGA DE DATOS ---
     useEffect(() => {
-        const fetchAves = async () => {
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (!currentUser) {
+                navigate('/'); // Expulsar si no hay sesión
+                return;
+            }
+            setUser(currentUser);
+
             try {
+                // 1. Cargar el Libro General
                 const querySnapshot = await getDocs(collection(db, "especies"));
                 const data = [];
-                querySnapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+                querySnapshot.forEach((documento) => data.push({ id: documento.id, ...documento.data() }));
                 setAvesBook(data);
+
+                // 2. Cargar la Colección Personal del Usuario
+                const progresoRef = doc(db, "colecciones_usuarios", currentUser.uid);
+                const progresoSnap = await getDoc(progresoRef);
+
+                if (progresoSnap.exists()) {
+                    setProgreso(progresoSnap.data());
+                } else {
+                    setProgreso({});
+                }
             } catch (e) {
                 console.error("Error cargando DB:", e);
             } finally {
                 setLoadingDB(false);
             }
-        };
-        fetchAves();
-    }, []);
+        });
+
+        return () => unsubscribe();
+    }, [navigate]);
 
     useEffect(() => {
         if (!selectedAve) return;
@@ -113,17 +138,25 @@ export default function BirdApp() {
     const obtenerGPS = () => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((pos) => {
-                const lat = pos.coords.latitude.toFixed(4);
-                const lon = pos.coords.longitude.toFixed(4);
-                setUbicacion(`Lat: ${lat}, Lon: ${lon}`);
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                setLatitud(lat);
+                setLongitud(lon);
+                setUbicacion(`Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`);
                 setShowLocationModal(false);
             }, () => {
-                alert("No se pudo obtener la ubicación.");
+                alert("No se pudo obtener la ubicación exacta. Verifica tus permisos.");
             });
         }
     };
 
-    // --- DIBUJAR OSCILOGRAMA ---
+    const obtenerSemanaDelAno = () => {
+        const d = new Date();
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    };
+
     const dibujarOndas = () => {
         if (!canvasRef.current || !analyserRef.current) return;
 
@@ -136,7 +169,6 @@ export default function BirdApp() {
         const dataArray = new Uint8Array(bufferLength);
 
         const draw = () => {
-            // Si no está grabando, limpiamos
             if (mediaRecorderRef.current?.state !== "recording") {
                 ctx.clearRect(0, 0, width, height);
                 return;
@@ -169,17 +201,25 @@ export default function BirdApp() {
         draw();
     };
 
-    // --- GRABACIÓN CONTROLADA (Lógica Estable) ---
+    const getSupportedMimeType = () => {
+        const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/aac'];
+        for (const type of types) {
+            if (MediaRecorder.isTypeSupported(type)) return type;
+        }
+        return '';
+    };
+
     const iniciarGrabacion = async () => {
         if (avesBook.length === 0) return alert("Espera a que cargue la base de datos.");
 
         try {
             streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(streamRef.current);
+            const options = { mimeType: getSupportedMimeType() };
+            mediaRecorderRef.current = new MediaRecorder(streamRef.current, options);
+
             audioChunksRef.current = [];
             setSugerenciasIA(null);
 
-            // Configurar Analizador visual
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
             const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
             analyserRef.current = audioContextRef.current.createAnalyser();
@@ -192,13 +232,18 @@ export default function BirdApp() {
                 setIsRecording(false);
                 setIsProcessing(true);
 
-                // Detener micrófonos visuales
                 if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
                 if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
+                const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+                const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+
                 const formData = new FormData();
-                formData.append("audio", audioBlob, "grabacion.wav");
+                formData.append("audio", audioBlob, `grabacion.${extension}`);
+                formData.append("lat", latitud);
+                formData.append("lon", longitud);
+                formData.append("week", obtenerSemanaDelAno());
 
                 try {
                     const res = await fetch("https://annpotopo-api-aves-backend.hf.space/identificar", { method: "POST", body: formData });
@@ -226,7 +271,6 @@ export default function BirdApp() {
         }
     };
 
-    // PROCESAR RESULTADOS SEPARADOS
     const procesarInteligencia = (datosIA) => {
         let enLibro = [];
         let extras = [];
@@ -270,7 +314,9 @@ export default function BirdApp() {
         setSugerenciasIA({ libro: enLibro, extras: extras });
     };
 
-    const confirmarAvistamiento = (aveId) => {
+    const confirmarAvistamiento = async (aveId) => {
+        if (!user) return; // Por seguridad adicional
+
         const nuevoProgreso = { ...progreso };
         const actual = getDatosAvistamiento(aveId);
 
@@ -280,8 +326,16 @@ export default function BirdApp() {
             location: ubicacion
         };
 
+        // 1. Actualizar UI
         setProgreso(nuevoProgreso);
-        localStorage.setItem('progresoAves', JSON.stringify(nuevoProgreso));
+
+        // 2. Subir a la nube directamente al perfil del usuario
+        try {
+            const progresoRef = doc(db, "colecciones_usuarios", user.uid);
+            await setDoc(progresoRef, nuevoProgreso);
+        } catch (error) {
+            console.error("Error guardando progreso en Firebase:", error);
+        }
 
         setShowConfirmationAnim(aveId);
         setTimeout(() => setShowConfirmationAnim(false), 1500);
@@ -290,11 +344,20 @@ export default function BirdApp() {
         setSugerenciasIA({ ...sugerenciasIA, libro: libroActualizado });
     };
 
+    // Si no ha cargado el usuario, mostrar un loading para que no parpadee fea la pantalla
+    if (loadingDB) {
+        return (
+            <div className="h-screen bg-gray-50 flex items-center justify-center">
+                <Loader2 className="w-10 h-10 animate-spin text-emerald-600" />
+            </div>
+        );
+    }
+
     return (
         <div className="h-screen bg-gray-50 flex flex-col font-sans text-gray-800 overflow-hidden relative">
 
             {/* HEADER CON UBICACIÓN */}
-            <header className="bg-white p-4 flex justify-between items-center z-10 shrink-0 border-b border-gray-200">
+            <header className="bg-white p-4 flex justify-between items-center z-10 shrink-0 border-b border-gray-200 shadow-sm">
                 <div className="flex flex-col">
                     <h1 className="text-lg font-extrabold text-emerald-700 tracking-tight">BirdSound ID</h1>
                     <button
@@ -353,7 +416,7 @@ export default function BirdApp() {
                                     <>
                                         <h3 className="text-emerald-600 font-bold text-[11px] uppercase tracking-widest mb-3 px-1">Registradas en tu libro</h3>
                                         {sugerenciasIA.libro.map(ave => (
-                                            <div key={ave.id} className="bg-white rounded-xl p-3 mb-4 shadow-sm border border-emerald-200 flex items-center gap-4 transition-all">
+                                            <div key={ave.id} className="bg-white rounded-xl p-3 mb-4 shadow-sm border border-emerald-200 flex items-center gap-4 transition-all hover:shadow-md">
                                                 <div className="w-16 h-16 rounded-lg bg-cover bg-center border border-gray-100 shrink-0" style={{ backgroundImage: `url(${ave.imagenUrl})` }}></div>
                                                 <div className="flex-1 min-w-0">
                                                     <h4 className="font-bold text-gray-800 text-sm truncate">{ave.nombreComun}</h4>
@@ -361,7 +424,7 @@ export default function BirdApp() {
                                                 </div>
                                                 <button
                                                     onClick={() => confirmarAvistamiento(ave.id)}
-                                                    className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-2.5 rounded-lg transition shrink-0"
+                                                    className="bg-emerald-100 hover:bg-emerald-500 hover:text-white text-emerald-700 p-2.5 rounded-lg transition-colors shrink-0 shadow-sm"
                                                 >
                                                     <Check className="w-5 h-5 stroke-[2.5]" />
                                                 </button>
@@ -399,11 +462,11 @@ export default function BirdApp() {
                         {showConfirmationAnim && (
                             <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center animate-in fade-in backdrop-blur-sm">
                                 <div className="text-center">
-                                    <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
                                         <Check className="w-10 h-10 text-emerald-600 stroke-[3]" />
                                     </div>
                                     <p className="text-xl font-bold text-gray-800">¡Confirmado!</p>
-                                    <p className="text-gray-500 text-sm">Añadido a tu colección.</p>
+                                    <p className="text-gray-500 text-sm">Añadido a tu colección personal.</p>
                                 </div>
                             </div>
                         )}
@@ -414,13 +477,13 @@ export default function BirdApp() {
                 {activeTab === 'collection' && (
                     <div className="p-4 md:p-6 bg-white min-h-full">
                         <div className="mb-6">
-                            <h2 className="text-2xl font-extrabold text-gray-800 tracking-tight mb-4">Tu Catálogo</h2>
+                            <h2 className="text-2xl font-extrabold text-gray-800 tracking-tight mb-4">Catálogo de {user?.displayName?.split(' ')[0] || 'Usuario'}</h2>
                             <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
                                 {['todas', 'hoy', 'descubiertas', 'faltantes'].map(f => (
                                     <button
                                         key={f}
                                         onClick={() => setFiltro(f)}
-                                        className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors border ${filtro === f ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                                        className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors border shadow-sm ${filtro === f ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
                                     >
                                         {f === 'todas' ? 'Todas' : f === 'hoy' ? 'Vistas Hoy' : f === 'descubiertas' ? 'Descubiertas' : 'Faltantes'}
                                     </button>
@@ -428,11 +491,7 @@ export default function BirdApp() {
                             </div>
                         </div>
 
-                        {loadingDB ? (
-                            <div className="flex items-center justify-center py-10 text-gray-400 gap-2">
-                                <Loader2 className="animate-spin w-5 h-5" /> Cargando...
-                            </div>
-                        ) : Object.keys(avesPorOrden).length === 0 ? (
+                        {Object.keys(avesPorOrden).length === 0 ? (
                             <div className="text-center py-12 text-gray-400">
                                 <Search className="w-12 h-12 mx-auto mb-3 opacity-20" />
                                 <p>No hay aves que coincidan con este filtro.</p>
