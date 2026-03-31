@@ -4,6 +4,8 @@ import Home from './components/Home/Home';
 import BirdApp from './components/BirdApp/BirdApp';
 import BookList from './components/Dashboard/BookList';
 import EditorLayout from './components/Editor/EditorLayout';
+import 'leaflet/dist/leaflet.css';
+import AdminDashboard from './components/BirdApp/AdminDashboard';
 
 export default function App() {
   return (
@@ -20,6 +22,9 @@ export default function App() {
 
         {/* 4. El Editor (Donde diseñas las páginas) */}
         <Route path="/editor/:bookId" element={<EditorLayout />} />
+
+        {/* 👇 5. AGREGA ESTA RUTA NUEVA */}
+        <Route path="/dashboard" element={<AdminDashboard />} />
       </Routes>
     </BrowserRouter>
   );

@@ -2,9 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { Mic, Library, Square, AlertCircle, Loader2, Award, X, Check, MapPin, Search, Volume2, Info, Calendar, Navigation, Edit3, Activity, Radar } from 'lucide-react';
+import { Mic, Library, Square, AlertCircle, Loader2, Award, X, Check, MapPin, Search, Volume2, Info, Calendar, Navigation, Edit3, Activity, Radar, Map, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Achievements from './Achievements';
+import MapExplore from './MapExplore';
+import BirdChecklist from './BirdChecklist';
+import { diccionarioAves } from './diccionarioSabinas';
 
 const firebaseConfig = {
     apiKey: "AIzaSyC2UNjl2dW0v_JH7-ScMUTnLkl64_7rsvM",
@@ -24,6 +27,12 @@ const db = initializeFirestore(app, {
 
 const auth = getAuth(app);
 
+// Quita espacios al inicio, al final, y convierte dobles espacios en uno solo
+const limpiarTexto = (texto) => {
+    if (!texto) return "";
+    return texto.trim().toLowerCase().replace(/\s+/g, ' ');
+};
+
 export default function BirdApp() {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
@@ -41,7 +50,6 @@ export default function BirdApp() {
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [tempLocation, setTempLocation] = useState('');
 
-    // --- NUEVOS ESTADOS PARA EL RADAR (Aves Posibles Hoy) ---
     const [avesRadar, setAvesRadar] = useState([]);
     const [loadingRadar, setLoadingRadar] = useState(false);
 
@@ -64,7 +72,6 @@ export default function BirdApp() {
     const [audioCanto, setAudioCanto] = useState('');
     const [buscandoAudio, setBuscandoAudio] = useState(false);
 
-    // 1. CARGA DE SEGURIDAD Y BASE DE DATOS
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (!currentUser) {
@@ -97,18 +104,15 @@ export default function BirdApp() {
         return () => unsubscribe();
     }, [navigate]);
 
-    // 2. EL RADAR: Buscar aves posibles en la zona con GBIF
     useEffect(() => {
         const buscarAvesRadar = async () => {
             setLoadingRadar(true);
             try {
-                // Creamos un cuadro imaginario de ~20km alrededor de tus coordenadas
                 const latMin = (latitud - 0.1).toFixed(4);
                 const latMax = (latitud + 0.1).toFixed(4);
                 const lonMin = (longitud - 0.1).toFixed(4);
                 const lonMax = (longitud + 0.1).toFixed(4);
 
-                // taxonKey=212 significa "Clase: Aves" en la base de datos mundial
                 const url = `https://api.gbif.org/v1/occurrence/search?taxonKey=212&hasCoordinate=true&decimalLatitude=${latMin},${latMax}&decimalLongitude=${lonMin},${lonMax}&limit=50`;
 
                 const res = await fetch(url);
@@ -118,13 +122,15 @@ export default function BirdApp() {
                 const nombresVistos = new Set();
 
                 data.results.forEach(obs => {
-                    // Evitar repetidas y descartar si no hay nombre de especie
                     if (obs.species && !nombresVistos.has(obs.species)) {
                         nombresVistos.add(obs.species);
+
+                        const cientificoLimpio = limpiarTexto(obs.species);
+                        const nombreTraducido = diccionarioAves[cientificoLimpio] || obs.vernacularName || 'Especie local';
+
                         especiesUnicas.push({
                             cientifico: obs.species,
-                            // Si GBIF no tiene nombre común, lo dejamos en blanco
-                            comun: obs.vernacularName || 'Especie local'
+                            comun: nombreTraducido
                         });
                     }
                 });
@@ -137,7 +143,6 @@ export default function BirdApp() {
             }
         };
 
-        // Solo buscar si estamos en la pestaña de identificar
         if (activeTab === 'identify') {
             buscarAvesRadar();
         }
@@ -318,36 +323,49 @@ export default function BirdApp() {
         }
     };
 
-    // 3. PARSEO ELEGANTE DE AVES PROBABLES / EXTRAS
+    // 🌟 AUDIO IA CON PORCENTAJES ARREGLADOS 🌟
     const procesarInteligencia = (datosIA) => {
         let enLibro = [];
         let extras = [];
 
-        // Extraemos la lista real de aves que nos mandó tu servidor FastAPI
         const listaAves = datosIA.aves || [];
 
         listaAves.forEach(aveDetectada => {
-            const cientifico = aveDetectada.scientificName;
-            const comun = aveDetectada.commonName;
-            const confianza = aveDetectada.confidence;
+            const cientifico = aveDetectada.scientificName || "";
 
-            // Verificamos si esta ave coincide con alguna de tu libro usando el nombre científico
+            // 🛠️ REPARACIÓN DEL PORCENTAJE (Evita el 9400%)
+            let confNum = parseFloat(aveDetectada.confidence) || 0;
+            let confianzaFinal = confNum <= 1.0 ? (confNum * 100).toFixed(0) : confNum.toFixed(0);
+
+            const cientificoLimpio = limpiarTexto(cientifico);
+
+            let nombreTraducido = diccionarioAves[cientificoLimpio];
+            if (!nombreTraducido) {
+                if (cientificoLimpio === 'aves') {
+                    nombreTraducido = "Ave (Especie no identificada)";
+                } else {
+                    nombreTraducido = aveDetectada.commonName || 'Ave Silvestre';
+                }
+            }
+
             const coincidenciaLibro = avesBook.find(aveLocal =>
-                aveLocal.nombreCientifico && aveLocal.nombreCientifico.toLowerCase() === cientifico.toLowerCase()
+                aveLocal.nombreCientifico && limpiarTexto(aveLocal.nombreCientifico) === cientificoLimpio
             );
 
             if (coincidenciaLibro) {
-                // Si está en el libro, la añadimos a la lista verde (evitando duplicados)
                 if (!enLibro.find(a => a.id === coincidenciaLibro.id)) {
-                    enLibro.push(coincidenciaLibro);
+                    // 🌟 INYECTAMOS EL PORCENTAJE DENTRO DEL LIBRO
+                    enLibro.push({
+                        ...coincidenciaLibro,
+                        confianzaIA: confianzaFinal
+                    });
                 }
             } else {
-                // Si NO está en el libro, extraemos la info real de BirdNET
-                if (!extras.find(e => e.cientifico === cientifico)) {
+                if (!extras.find(e => limpiarTexto(e.cientifico) === cientificoLimpio)) {
                     extras.push({
                         cientifico: cientifico,
-                        comun: comun, // BirdNET usualmente devuelve el nombre en inglés por defecto
-                        confianza: confianza // % de seguridad de la IA
+                        comun: nombreTraducido,
+                        confianza: confianzaFinal // 🌟 PORCENTAJE CORRECTO
                     });
                 }
             }
@@ -395,7 +413,6 @@ export default function BirdApp() {
     return (
         <div className="h-screen bg-gray-50 flex flex-col font-sans text-gray-800 overflow-hidden relative">
 
-            {/* HEADER */}
             <header className="bg-white p-4 flex justify-between items-center z-10 shrink-0 border-b border-gray-200 shadow-sm">
                 <div className="flex flex-col">
                     <h1 className="text-lg font-extrabold text-emerald-700 tracking-tight">BirdSound ID</h1>
@@ -413,13 +430,10 @@ export default function BirdApp() {
                 </button>
             </header>
 
-            {/* ÁREA PRINCIPAL */}
             <div className="flex-1 overflow-y-auto pb-24 relative flex flex-col">
 
-                {/* --- PESTAÑA IDENTIFICAR --- */}
                 {activeTab === 'identify' && (
                     <div className="flex flex-col items-center justify-start h-full p-6">
-
                         <div className="mt-4 mb-8 flex flex-col items-center justify-center w-full">
                             <div className="relative flex items-center justify-center mb-4">
                                 {isRecording && <div className="absolute w-40 h-40 bg-red-100 rounded-full animate-ping"></div>}
@@ -445,7 +459,6 @@ export default function BirdApp() {
                             </div>
                         </div>
 
-                        {/* LISTA DE RESULTADOS DE AUDIO */}
                         {sugerenciasIA ? (
                             <div className="w-full max-w-lg animate-in slide-in-from-bottom-4 duration-300">
                                 {sugerenciasIA.libro.length > 0 && (
@@ -453,7 +466,16 @@ export default function BirdApp() {
                                         <h3 className="text-emerald-600 font-bold text-[11px] uppercase tracking-widest mb-3 px-1">Registradas en tu libro</h3>
                                         {sugerenciasIA.libro.map(ave => (
                                             <div key={ave.id} className="bg-white rounded-xl p-3 mb-4 shadow-sm border border-emerald-200 flex items-center gap-4 transition-all hover:shadow-md">
-                                                <div className="w-16 h-16 rounded-lg bg-cover bg-center border border-gray-100 shrink-0" style={{ backgroundImage: `url(${ave.imagenUrl})` }}></div>
+
+                                                {/* 🌟 AQUÍ SE DIBUJA EL PORCENTAJE EN LAS AVES DEL LIBRO */}
+                                                <div className="relative w-16 h-16 rounded-lg bg-cover bg-center border border-gray-100 shrink-0" style={{ backgroundImage: `url(${ave.imagenUrl})` }}>
+                                                    {ave.confianzaIA && (
+                                                        <div className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10">
+                                                            {ave.confianzaIA}%
+                                                        </div>
+                                                    )}
+                                                </div>
+
                                                 <div className="flex-1 min-w-0">
                                                     <h4 className="font-bold text-gray-800 text-sm truncate">{ave.nombreComun}</h4>
                                                     <p className="text-xs text-gray-500 italic truncate">{ave.nombreCientifico}</p>
@@ -469,7 +491,6 @@ export default function BirdApp() {
                                     </>
                                 )}
 
-                                {/* ✨ AVES DETECTADAS QUE NO ESTÁN EN EL LIBRO ✨ */}
                                 {sugerenciasIA.extras.length > 0 && (
                                     <div className="mt-6">
                                         <h3 className="text-gray-400 font-bold text-[11px] uppercase tracking-widest mb-3 px-1">Detecciones Probables (Fuera del libro)</h3>
@@ -477,8 +498,7 @@ export default function BirdApp() {
                                             <div key={idx} className="bg-white rounded-xl p-3 mb-3 shadow-sm border border-gray-200 flex items-center gap-4 opacity-90 border-l-4 border-l-blue-400">
                                                 <div className="w-14 h-14 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100 relative">
                                                     <Info className="w-6 h-6 text-blue-400" />
-                                                    {/* Insignia de porcentaje */}
-                                                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                                                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10">
                                                         {extra.confianza}%
                                                     </div>
                                                 </div>
@@ -500,7 +520,6 @@ export default function BirdApp() {
                                 )}
                             </div>
                         ) : (
-                            /* ✨ RADAR DE AVES POSIBLES (Solo se ve antes de grabar) ✨ */
                             <div className="w-full max-w-lg mt-4 border-t border-gray-200 pt-6">
                                 <h3 className="text-gray-600 font-bold text-[11px] uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
                                     <Radar className="w-4 h-4 text-emerald-500" /> Radar de Aves en tu zona hoy
@@ -542,7 +561,19 @@ export default function BirdApp() {
                     </div>
                 )}
 
-                {/* --- PESTAÑA COLECCIÓN UNIFICADA (Catálogo / Logros) --- */}
+                {activeTab === 'explore' && (
+                    <MapExplore db={db} user={user} />
+                )}
+
+                {activeTab === 'lists' && (
+                    <BirdChecklist
+                        db={db}
+                        user={user}
+                        ubicacion={ubicacion}
+                        avesRadar={avesRadar}
+                    />
+                )}
+
                 {activeTab === 'collection' && (
                     <div className="p-4 md:p-6 bg-white min-h-full flex flex-col">
                         <div className="flex bg-gray-100 p-1 rounded-xl mb-6 shrink-0">
@@ -744,21 +775,18 @@ export default function BirdApp() {
             )}
 
             {/* MENÚ INFERIOR */}
-            <nav className="bg-white border-t border-gray-200 flex justify-around items-center pb-safe fixed bottom-0 w-full h-16 shrink-0 z-40">
-                <button
-                    onClick={() => { if (isRecording) detenerGrabacion(); setActiveTab('identify'); }}
-                    className={`flex flex-col items-center justify-center w-1/2 h-full space-y-1 transition duration-200 ${activeTab === 'identify' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}
-                >
-                    <Mic className={`w-6 h-6 ${activeTab === 'identify' ? 'stroke-[2.5]' : 'stroke-2'}`} />
-                    <span className="text-[10px] font-bold">Identificar</span>
+            <nav className="bg-white border-t border-gray-200 flex justify-between items-center pb-safe fixed bottom-0 w-full h-16 shrink-0 z-40 px-1">
+                <button onClick={() => setActiveTab('identify')} className={`flex flex-col items-center justify-center w-1/4 h-full space-y-1 ${activeTab === 'identify' ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    <Mic className="w-5 h-5" /><span className="text-[9px] font-bold">IA Sonido</span>
                 </button>
-
-                <button
-                    onClick={() => { if (isRecording) detenerGrabacion(); setActiveTab('collection'); }}
-                    className={`flex flex-col items-center justify-center w-1/2 h-full space-y-1 transition duration-200 ${activeTab === 'collection' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}
-                >
-                    <Library className={`w-6 h-6 ${activeTab === 'collection' ? 'stroke-[2.5]' : 'stroke-2'}`} />
-                    <span className="text-[10px] font-bold">Colección</span>
+                <button onClick={() => setActiveTab('lists')} className={`flex flex-col items-center justify-center w-1/4 h-full space-y-1 ${activeTab === 'lists' ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    <ClipboardList className="w-5 h-5" /><span className="text-[9px] font-bold">Listas</span>
+                </button>
+                <button onClick={() => setActiveTab('explore')} className={`flex flex-col items-center justify-center w-1/4 h-full space-y-1 ${activeTab === 'explore' ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    <Map className="w-5 h-5" /><span className="text-[9px] font-bold">Explorar</span>
+                </button>
+                <button onClick={() => setActiveTab('collection')} className={`flex flex-col items-center justify-center w-1/4 h-full space-y-1 ${activeTab === 'collection' ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    <Library className="w-5 h-5" /><span className="text-[9px] font-bold">Mi Libro</span>
                 </button>
             </nav>
 
