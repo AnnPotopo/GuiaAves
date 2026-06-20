@@ -92,14 +92,14 @@ export default function AdminDashboard() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="h-full bg-gray-50 flex items-center justify-center">
                 <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans">
+        <div className="h-full bg-gray-50 font-sans overflow-y-auto">
             {/* HEADER ADMIN */}
             <header className="bg-purple-900 text-white p-6 shadow-md flex justify-between items-center">
                 <div>

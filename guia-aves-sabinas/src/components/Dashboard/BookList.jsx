@@ -53,7 +53,7 @@ export default function BookList() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 p-10 font-sans text-gray-800">
+        <div className="h-full bg-gray-100 p-10 font-sans text-gray-800">
             <div className="max-w-5xl mx-auto">
                 <h1 className="text-4xl font-bold text-emerald-800 mb-8">Mis Publicaciones</h1>
 

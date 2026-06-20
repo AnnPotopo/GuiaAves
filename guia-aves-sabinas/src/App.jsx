@@ -1,30 +1,29 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout/Layout';
 import Home from './components/Home/Home';
 import BirdApp from './components/BirdApp/BirdApp';
 import BookList from './components/Dashboard/BookList';
 import EditorLayout from './components/Editor/EditorLayout';
-import 'leaflet/dist/leaflet.css';
 import AdminDashboard from './components/BirdApp/AdminDashboard';
+import DatabaseManager from './components/Database/DatabaseManager';
+import 'leaflet/dist/leaflet.css';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 1. Pantalla de Bienvenida */}
-        <Route path="/" element={<Home />} />
+        {/* Usamos el Layout como "Plantilla" para todas estas rutas */}
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="birdapp" element={<BirdApp />} />
+          <Route path="libros" element={<BookList />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="database" element={<DatabaseManager />} />
+        </Route>
 
-        {/* 2. El Identificador (Tu App de Aves) */}
-        <Route path="/birdapp" element={<BirdApp />} />
-
-        {/* 3. TU PANEL DE LIBROS (Aquí están a salvo) */}
-        <Route path="/libros" element={<BookList />} />
-
-        {/* 4. El Editor (Donde diseñas las páginas) */}
+        {/* El Editor queda independiente para ser Pantalla Completa */}
         <Route path="/editor/:bookId" element={<EditorLayout />} />
-
-        {/* 👇 5. AGREGA ESTA RUTA NUEVA */}
-        <Route path="/dashboard" element={<AdminDashboard />} />
       </Routes>
     </BrowserRouter>
   );

@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { Mic, Library, Square, AlertCircle, Loader2, Award, X, Check, MapPin, Search, Volume2, Info, Calendar, Navigation, Edit3, Activity, Radar, Map, ClipboardList } from 'lucide-react';
+import { Mic, Library, Square, AlertCircle, Loader2, Award, X, Check, MapPin, Search, Volume2, Info, Calendar, Navigation, Edit3, Activity, Radar, Map, ClipboardList, Speaker } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Achievements from './Achievements';
 import MapExplore from './MapExplore';
 import BirdChecklist from './BirdChecklist';
 import { diccionarioAves } from './diccionarioSabinas';
+import BirdSoundBox from './BirdSoundBox';
 
 const firebaseConfig = {
     apiKey: "AIzaSyC2UNjl2dW0v_JH7-ScMUTnLkl64_7rsvM",
@@ -27,7 +28,6 @@ const db = initializeFirestore(app, {
 
 const auth = getAuth(app);
 
-// Quita espacios al inicio, al final, y convierte dobles espacios en uno solo
 const limpiarTexto = (texto) => {
     if (!texto) return "";
     return texto.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -323,7 +323,6 @@ export default function BirdApp() {
         }
     };
 
-    // 🌟 AUDIO IA CON PORCENTAJES ARREGLADOS 🌟
     const procesarInteligencia = (datosIA) => {
         let enLibro = [];
         let extras = [];
@@ -333,7 +332,6 @@ export default function BirdApp() {
         listaAves.forEach(aveDetectada => {
             const cientifico = aveDetectada.scientificName || "";
 
-            // 🛠️ REPARACIÓN DEL PORCENTAJE (Evita el 9400%)
             let confNum = parseFloat(aveDetectada.confidence) || 0;
             let confianzaFinal = confNum <= 1.0 ? (confNum * 100).toFixed(0) : confNum.toFixed(0);
 
@@ -354,7 +352,6 @@ export default function BirdApp() {
 
             if (coincidenciaLibro) {
                 if (!enLibro.find(a => a.id === coincidenciaLibro.id)) {
-                    // 🌟 INYECTAMOS EL PORCENTAJE DENTRO DEL LIBRO
                     enLibro.push({
                         ...coincidenciaLibro,
                         confianzaIA: confianzaFinal
@@ -365,7 +362,7 @@ export default function BirdApp() {
                     extras.push({
                         cientifico: cientifico,
                         comun: nombreTraducido,
-                        confianza: confianzaFinal // 🌟 PORCENTAJE CORRECTO
+                        confianza: confianzaFinal
                     });
                 }
             }
@@ -404,14 +401,14 @@ export default function BirdApp() {
 
     if (loadingDB) {
         return (
-            <div className="h-screen bg-gray-50 flex items-center justify-center">
+            <div className="h-full bg-gray-50 flex items-center justify-center">
                 <Loader2 className="w-10 h-10 animate-spin text-emerald-600" />
             </div>
         );
     }
 
     return (
-        <div className="h-screen bg-gray-50 flex flex-col font-sans text-gray-800 overflow-hidden relative">
+        <div className="h-full bg-gray-50 flex flex-col font-sans text-gray-800 overflow-hidden relative">
 
             <header className="bg-white p-4 flex justify-between items-center z-10 shrink-0 border-b border-gray-200 shadow-sm">
                 <div className="flex flex-col">
@@ -467,7 +464,6 @@ export default function BirdApp() {
                                         {sugerenciasIA.libro.map(ave => (
                                             <div key={ave.id} className="bg-white rounded-xl p-3 mb-4 shadow-sm border border-emerald-200 flex items-center gap-4 transition-all hover:shadow-md">
 
-                                                {/* 🌟 AQUÍ SE DIBUJA EL PORCENTAJE EN LAS AVES DEL LIBRO */}
                                                 <div className="relative w-16 h-16 rounded-lg bg-cover bg-center border border-gray-100 shrink-0" style={{ backgroundImage: `url(${ave.imagenUrl})` }}>
                                                     {ave.confianzaIA && (
                                                         <div className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10">
@@ -571,6 +567,14 @@ export default function BirdApp() {
                         user={user}
                         ubicacion={ubicacion}
                         avesRadar={avesRadar}
+                    />
+                )}
+
+                {/* 👇 AQUÍ RENDERIZAMOS EL NUEVO COMPONENTE BIRD SOUND BOX */}
+                {activeTab === 'soundbox' && (
+                    <BirdSoundBox
+                        db={db}
+                        user={user}
                     />
                 )}
 
@@ -774,19 +778,23 @@ export default function BirdApp() {
                 </div>
             )}
 
-            {/* MENÚ INFERIOR */}
-            <nav className="bg-white border-t border-gray-200 flex justify-between items-center pb-safe fixed bottom-0 w-full h-16 shrink-0 z-40 px-1">
-                <button onClick={() => setActiveTab('identify')} className={`flex flex-col items-center justify-center w-1/4 h-full space-y-1 ${activeTab === 'identify' ? 'text-emerald-600' : 'text-gray-400'}`}>
-                    <Mic className="w-5 h-5" /><span className="text-[9px] font-bold">IA Sonido</span>
+            {/* 👇 MENÚ INFERIOR ACTUALIZADO CON 5 BOTONES */}
+            <nav className="bg-white border-t border-gray-200 flex justify-between items-center pb-safe fixed bottom-0 w-full h-16 shrink-0 z-40 px-1 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <button onClick={() => setActiveTab('identify')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'identify' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <Mic className={`w-5 h-5 ${activeTab === 'identify' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Identificar</span>
                 </button>
-                <button onClick={() => setActiveTab('lists')} className={`flex flex-col items-center justify-center w-1/4 h-full space-y-1 ${activeTab === 'lists' ? 'text-emerald-600' : 'text-gray-400'}`}>
-                    <ClipboardList className="w-5 h-5" /><span className="text-[9px] font-bold">Listas</span>
+                <button onClick={() => setActiveTab('lists')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'lists' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <ClipboardList className={`w-5 h-5 ${activeTab === 'lists' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Listas</span>
                 </button>
-                <button onClick={() => setActiveTab('explore')} className={`flex flex-col items-center justify-center w-1/4 h-full space-y-1 ${activeTab === 'explore' ? 'text-emerald-600' : 'text-gray-400'}`}>
-                    <Map className="w-5 h-5" /><span className="text-[9px] font-bold">Explorar</span>
+                <button onClick={() => setActiveTab('explore')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'explore' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <Map className={`w-5 h-5 ${activeTab === 'explore' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Explorar</span>
                 </button>
-                <button onClick={() => setActiveTab('collection')} className={`flex flex-col items-center justify-center w-1/4 h-full space-y-1 ${activeTab === 'collection' ? 'text-emerald-600' : 'text-gray-400'}`}>
-                    <Library className="w-5 h-5" /><span className="text-[9px] font-bold">Mi Libro</span>
+                <button onClick={() => setActiveTab('collection')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'collection' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <Library className={`w-5 h-5 ${activeTab === 'collection' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Mi Libro</span>
+                </button>
+                {/* BOTÓN NUEVO */}
+                <button onClick={() => setActiveTab('soundbox')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'soundbox' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <Speaker className={`w-5 h-5 ${activeTab === 'soundbox' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">SoundBox</span>
                 </button>
             </nav>
 
