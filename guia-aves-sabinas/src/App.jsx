@@ -4,6 +4,8 @@ import Layout from './components/Layout/Layout';
 import Home from './components/Home/Home';
 import BirdApp from './components/BirdApp/BirdApp';
 import BookList from './components/Dashboard/BookList';
+import PDFViewer from './components/Editor/PDFViewer';
+import UserProfile from './components/Dashboard/UserProfile';
 import EditorLayout from './components/Editor/EditorLayout';
 import AdminDashboard from './components/BirdApp/AdminDashboard';
 import DatabaseManager from './components/Database/DatabaseManager';
@@ -24,6 +26,8 @@ export default function App() {
 
         {/* El Editor queda independiente para ser Pantalla Completa */}
         <Route path="/editor/:bookId" element={<EditorLayout />} />
+        <Route path="/visor/:bookId" element={<PDFViewer />} />
+        <Route path="/perfil/:usuarioId" element={<UserProfile />} />
       </Routes>
     </BrowserRouter>
   );
