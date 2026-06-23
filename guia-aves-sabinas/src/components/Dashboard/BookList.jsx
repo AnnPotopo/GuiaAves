@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Upload, Lock, Globe, EyeOff, Search, Filter, Compass, User, Image as ImageIcon, Loader2, Bookmark, Settings, ChevronLeft, ChevronRight, TrendingUp, Clock, Star, Library, FolderPlus, Folder } from 'lucide-react';
-import { collection, getDocs, doc, setDoc, query, where, addDoc } from 'firebase/firestore';
+import { BookOpen, Upload, Lock, EyeOff, Search, Filter, Compass, User, Image as ImageIcon, Loader2, Bookmark, Settings, ChevronLeft, ChevronRight, TrendingUp, Clock, Star, Library, FolderPlus, Folder, X } from 'lucide-react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase/config';
 import { getAuth } from 'firebase/auth';
@@ -22,7 +21,7 @@ export default function BookList() {
     const [books, setBooks] = useState([]);
     const [colecciones, setColecciones] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('explorar'); // explorar, mi_perfil
+    const [activeTab, setActiveTab] = useState('explorar');
     const [selectedColeccion, setSelectedColeccion] = useState('Todos');
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -31,13 +30,11 @@ export default function BookList() {
 
     const [profileData, setProfileData] = useState({ coverUrl: '', avatarUrl: user?.photoURL || '' });
 
-    // Modales y Subidas
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [showCollectionModal, setShowCollectionModal] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState('');
 
-    // Estado del Formulario de Publicación
     const [uploadData, setUploadData] = useState({
         titulo: '', descripcion: '', categorias: [], visibilidad: 'publico', coleccionId: '', file: null, cover: null
     });
@@ -115,10 +112,7 @@ export default function BookList() {
         if (current.includes(cat)) {
             current = current.filter(c => c !== cat);
         } else {
-            if (current.length >= 4) {
-                alert("Puedes seleccionar un máximo de 4 categorías.");
-                return;
-            }
+            if (current.length >= 4) return alert("Puedes seleccionar un máximo de 4 categorías.");
             current.push(cat);
         }
         setUploadData({ ...uploadData, categorias: current });
@@ -145,7 +139,7 @@ export default function BookList() {
             const newBook = {
                 titulo: uploadData.titulo,
                 descripcion: uploadData.descripcion,
-                categorias: uploadData.categorias, // Guardado como Arreglo
+                categorias: uploadData.categorias,
                 visibilidad: uploadData.visibilidad,
                 coleccionId: uploadData.coleccionId || null,
                 pdfUrl: pdfUrl,
@@ -176,7 +170,6 @@ export default function BookList() {
         setProfileData(prev => ({ ...prev, coverUrl: url }));
     };
 
-    // --- FILTRADO DE PUBLICACIONES ---
     const librosFiltrados = books.filter(b => {
         if (activeTab === 'mi_perfil' && b.authorId !== user.uid) return false;
         if (selectedColeccion !== 'Todos' && b.coleccionId !== selectedColeccion) return false;
@@ -201,7 +194,6 @@ export default function BookList() {
     });
     const editoresDestacados = Object.values(authorsMap).sort((a, b) => b.count - a.count).slice(0, 5);
 
-    // --- COMPONENTE TARJETA DE LIBRO ---
     const BookCard = ({ book }) => (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col relative w-full aspect-[3/4]">
             {(book.authorId === user.uid || isAdmin) && (
@@ -249,7 +241,6 @@ export default function BookList() {
 
     return (
         <div className="h-full bg-gray-50 flex flex-col font-sans overflow-hidden">
-            {/* TOOLBAR SUPERIOR INTERNO */}
             <nav className="bg-white px-6 py-4 border-b border-gray-200 shrink-0 flex items-center justify-between z-20 shadow-sm">
                 <div className="flex items-center gap-3">
                     <div className="bg-emerald-100 p-2 rounded-xl">
@@ -271,7 +262,6 @@ export default function BookList() {
             </nav>
 
             <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar">
-                {/* 🌍 CABECERA ASOCIADA AL TAB ACTIVO */}
                 {activeTab === 'explorar' ? (
                     !searchQuery && categoryFilter === 'Todas' && (
                         <div className="relative bg-black h-64 shrink-0">
@@ -286,7 +276,6 @@ export default function BookList() {
                         </div>
                     )
                 ) : (
-                    /* 👤 CABECERA PROPIO DE MI ESPACIO CON MARGEN AJUSTADO PARA EVITAR SOLAPE */
                     <div className="w-full shrink-0 bg-white border-b border-gray-200 pb-6">
                         <div className="relative w-full h-40 md:h-56 bg-slate-800 group">
                             {profileData.coverUrl ? <img src={profileData.coverUrl} alt="Cover" className="w-full h-full object-cover opacity-70" /> : <div className="w-full h-full bg-gradient-to-r from-emerald-900 to-slate-900" />}
@@ -295,7 +284,6 @@ export default function BookList() {
                                 <input type="file" className="hidden" accept="image/*" onChange={handleUpdateCover} />
                             </label>
                         </div>
-                        {/* 🌟 AJUSTE: El perfil y nombre bajan lo suficiente para no encimarse con la foto superior */}
                         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center gap-4 -mt-10 relative z-10">
                             <img src={profileData.avatarUrl || "https://via.placeholder.com/150"} alt="Avatar" className="w-24 h-24 rounded-full border-4 border-white shadow-md object-cover bg-white shrink-0" />
                             <div className="mt-8 md:mt-12">
@@ -306,27 +294,16 @@ export default function BookList() {
                     </div>
                 )}
 
-                {/* 🔍 BARRA DE BÚSQUEDA Y FILTRADO */}
                 <div className={`px-4 max-w-4xl mx-auto w-full transition-all duration-300 ${activeTab === 'explorar' && !searchQuery && categoryFilter === 'Todas' ? '-mt-8 relative z-10' : 'mt-8'}`}>
                     <div className="bg-white p-2 rounded-2xl md:rounded-full shadow-sm border border-gray-200 flex flex-col md:flex-row items-center gap-2">
                         <div className="flex-1 flex items-center px-4 w-full">
                             <Search className="w-5 h-5 text-gray-400 shrink-0" />
-                            <input
-                                type="text"
-                                placeholder="Buscar publicaciones globales..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-transparent p-3 text-sm text-gray-700 focus:outline-none font-medium"
-                            />
+                            <input type="text" placeholder="Buscar publicaciones globales..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-2 bg-transparent text-sm text-gray-700 focus:outline-none py-1.5 font-medium" />
                         </div>
-                        <div className="hidden md:block w-px h-8 bg-gray-200"></div>
-                        <div className="flex items-center w-full md:w-auto px-2">
-                            <Filter className="w-4 h-4 text-gray-400 shrink-0 ml-2" />
-                            <select
-                                value={categoryFilter}
-                                onChange={(e) => setCategoryFilter(e.target.value)}
-                                className="bg-transparent border-none text-xs font-bold text-gray-600 focus:ring-0 cursor-pointer outline-none w-full md:w-auto p-2"
-                            >
+                        <div className="hidden md:block w-px h-6 bg-gray-200" />
+                        <div className="flex items-center w-full md:w-auto px-2 shrink-0">
+                            <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0 mr-1" />
+                            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="bg-transparent border-none text-xs font-bold text-gray-600 focus:ring-0 cursor-pointer outline-none w-full md:w-auto py-1">
                                 <option value="Todas">Todas las categorías</option>
                                 {listaCategorias.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
@@ -334,9 +311,8 @@ export default function BookList() {
                     </div>
                 </div>
 
-                {/* 🛠️ ACCIONES DE ESPACIO (Solo en Mi Perfil) */}
                 {activeTab === 'mi_perfil' && (
-                    <div className="max-w-7xl mx-auto w-full px-6 mt-6 flex gap-3 shrink-0">
+                    <div className="max-w-7xl mx-auto w-full px-6 mt-4 flex gap-3 shrink-0">
                         <button onClick={() => setShowUploadModal(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
                             <Upload className="w-4 h-4" /> Subir PDF
                         </button>
@@ -346,14 +322,12 @@ export default function BookList() {
                     </div>
                 )}
 
-                {/* 📦 CONTENIDO PRINCIPAL: EXPLORAR O MI ESPACIO */}
                 <div className="max-w-7xl mx-auto px-6 py-8 w-full flex-1">
                     {loading ? (
                         <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
                     ) : (
                         <>
                             {activeTab === 'explorar' ? (
-                                /* VISTA EXPLORAR */
                                 (searchQuery || categoryFilter !== 'Todas') ? (
                                     <div>
                                         <h2 className="text-xl font-bold text-gray-800 mb-6">Resultados de Búsqueda ({librosBusqueda.length})</h2>
@@ -415,9 +389,7 @@ export default function BookList() {
                                     </div>
                                 )
                             ) : (
-                                /* VISTA MI PERFIL: LAYOUT CON MENÚ LATERAL DE COLECCIONES */
                                 <div className="flex flex-col md:flex-row gap-6 items-start w-full">
-                                    {/* MENÚ LATERAL IZQUIERDO */}
                                     <aside className="w-full md:w-56 bg-white border border-gray-200 rounded-2xl p-4 shrink-0 shadow-sm space-y-1">
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 px-2 flex items-center gap-1">
                                             <Folder className="w-3 h-3" /> Filtrar por Colección
@@ -432,7 +404,6 @@ export default function BookList() {
                                         ))}
                                     </aside>
 
-                                    {/* CUADRÍCULA DE PUBLICACIONES */}
                                     <div className="flex-1 w-full">
                                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                                             {librosFiltrados.map(book => <BookCard key={book.id} book={book} />)}
@@ -451,7 +422,7 @@ export default function BookList() {
                 </div>
             </div>
 
-            {/* MODAL: SUBIR PUBLICACIÓN (Mínimo 1, Máximo 4 categorías) */}
+            {/* MODAL: SUBIR PUBLICACIÓN */}
             {showUploadModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-in fade-in">
                     <div className="bg-white rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95">
@@ -465,7 +436,6 @@ export default function BookList() {
                                 <input type="text" required value={uploadData.titulo} onChange={e => setUploadData({ ...uploadData, titulo: e.target.value })} className="w-full border border-gray-300 rounded-xl p-2.5 text-sm outline-none" />
                             </div>
 
-                            {/* CATEGORÍAS MÚLTIPLES */}
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Categorías asociadas (1 a 4 máximo)</label>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200">

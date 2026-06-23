@@ -5,10 +5,12 @@ import { db } from '../../firebase/config';
 import { getAuth } from 'firebase/auth';
 import { ArrowLeft, ChevronLeft, ChevronRight, Lock, Key, Download, LayoutGrid, Loader2 } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
+
+// Importaciones CSS de react-pdf corregidas para la última versión
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Configuración obligatoria para react-pdf
+// Configuración obligatoria del Worker de pdf.js
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export default function PDFViewer() {
@@ -25,12 +27,13 @@ export default function PDFViewer() {
     const [pageNumber, setPageNumber] = useState(1);
     const [showSidebar, setShowSidebar] = useState(true);
 
-    // Estados para código de acceso
+    // Estados para el código de acceso (Libros Privados)
     const [accessCode, setAccessCode] = useState('');
     const [codeError, setCodeError] = useState('');
 
     useEffect(() => {
         cargarLibro();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bookId, user]);
 
     const cargarLibro = async () => {
@@ -42,16 +45,21 @@ export default function PDFViewer() {
                 const data = { id: docSnap.id, ...docSnap.data() };
                 setBook(data);
 
-                // Sumar 1 a las vistas
+                // Aumentar el contador de vistas
                 updateDoc(docRef, { views: (data.views || 0) + 1 });
 
                 // Lógica de Permisos
-                if (data.visibilidad === 'publico') setHasAccess(true);
-                else if (user && data.authorId === user.uid) setHasAccess(true);
-                else if (user && data.allowedUsers?.includes(user.uid)) setHasAccess(true);
-                else setHasAccess(false);
+                if (data.visibilidad === 'publico') {
+                    setHasAccess(true);
+                } else if (user && data.authorId === user.uid) {
+                    setHasAccess(true);
+                } else if (user && data.allowedUsers && data.allowedUsers.includes(user.uid)) {
+                    setHasAccess(true);
+                } else {
+                    setHasAccess(false);
+                }
             } else {
-                alert("Esta publicación no existe.");
+                alert("Esta publicación no existe o fue eliminada.");
                 navigate('/libros');
             }
         } catch (error) {
@@ -79,10 +87,10 @@ export default function PDFViewer() {
                 return setCodeError("Este código ya alcanzó su límite de usos.");
             }
 
-            // Código válido, dar acceso
+            // El código es válido, procedemos a dar acceso
             try {
                 const docRef = doc(db, "libros_publicados", bookId);
-                // Actualizamos el uso del código y agregamos al usuario
+                // Actualizamos el uso del código y agregamos al usuario a la lista de permitidos
                 codes[validCodeIndex].used += 1;
                 await updateDoc(docRef, {
                     allowedUsers: arrayUnion(user.uid),
@@ -90,12 +98,12 @@ export default function PDFViewer() {
                 });
 
                 setHasAccess(true);
-                alert("¡Código canjeado! Tienes acceso a esta publicación.");
+                alert("¡Código canjeado con éxito! Tienes acceso permanente a esta publicación.");
             } catch (error) {
-                console.error("Error al canjear:", error);
+                console.error("Error al canjear el código:", error);
             }
         } else {
-            setCodeError("Código inválido.");
+            setCodeError("El código ingresado es inválido.");
         }
     };
 
@@ -111,10 +119,17 @@ export default function PDFViewer() {
         });
     };
 
-    if (loading) return <div className="h-screen flex items-center justify-center bg-gray-900"><Loader2 className="w-12 h-12 animate-spin text-white" /></div>;
+    if (loading) {
+        return (
+            <div className="h-screen flex items-center justify-center bg-gray-900">
+                <Loader2 className="w-12 h-12 animate-spin text-white" />
+            </div>
+        );
+    }
+
     if (!book) return null;
 
-    // PANTALLA DE ACCESO RESTRINGIDO
+    // --- PANTALLA DE ACCESO RESTRINGIDO (CANDADO) ---
     if (!hasAccess) {
         return (
             <div className="h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
@@ -123,10 +138,14 @@ export default function PDFViewer() {
                         <Lock className="w-10 h-10" />
                     </div>
                     <h2 className="text-2xl font-black text-gray-800 mb-2">Publicación Privada</h2>
-                    <p className="text-gray-500 mb-8 text-sm">"{book.titulo}" de {book.authorName}</p>
+                    <p className="text-gray-500 mb-8 text-sm">
+                        "{book.titulo}" de {book.authorName}
+                    </p>
 
                     <form onSubmit={handleCanjearCodigo} className="space-y-4 text-left">
-                        <label className="block text-xs font-bold text-gray-500 uppercase">Ingresa tu código de invitación</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase">
+                            Ingresa tu código de invitación
+                        </label>
                         <div className="relative">
                             <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                             <input
@@ -137,14 +156,22 @@ export default function PDFViewer() {
                                 className="w-full bg-gray-50 border border-gray-300 text-gray-800 rounded-xl py-3 pl-12 pr-4 uppercase focus:outline-none focus:border-amber-500 font-mono font-bold tracking-widest"
                             />
                         </div>
-                        {codeError && <p className="text-red-500 text-xs font-bold">{codeError}</p>}
+                        {codeError && (
+                            <p className="text-red-500 text-xs font-bold">{codeError}</p>
+                        )}
 
-                        <button type="submit" className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95">
+                        <button
+                            type="submit"
+                            className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95"
+                        >
                             Canjear Acceso
                         </button>
                     </form>
 
-                    <button onClick={() => navigate('/libros')} className="mt-6 text-sm font-bold text-gray-400 hover:text-gray-600 transition">
+                    <button
+                        onClick={() => navigate('/libros')}
+                        className="mt-6 text-sm font-bold text-gray-400 hover:text-gray-600 transition"
+                    >
                         Volver a la biblioteca
                     </button>
                 </div>
@@ -152,21 +179,31 @@ export default function PDFViewer() {
         );
     }
 
-    // VISOR PRINCIPAL
+    // --- VISOR PRINCIPAL DE PDF ---
     return (
         <div className="h-screen flex flex-col bg-[#1e1e1e] text-white font-sans overflow-hidden">
 
             {/* TOOLBAR SUPERIOR */}
             <div className="h-14 bg-[#2d2d2d] border-b border-[#3d3d3d] flex items-center justify-between px-4 shrink-0 shadow-md z-20">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/libros')} className="p-2 hover:bg-white/10 rounded-lg transition" title="Volver">
+                    <button
+                        onClick={() => navigate('/libros')}
+                        className="p-2 hover:bg-white/10 rounded-lg transition"
+                        title="Volver"
+                    >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="border-l border-[#4d4d4d] h-6 mx-1"></div>
-                    <button onClick={() => setShowSidebar(!showSidebar)} className={`p-2 rounded-lg transition ${showSidebar ? 'bg-emerald-600' : 'hover:bg-white/10'}`} title="Mostrar/Ocultar Miniaturas">
+                    <button
+                        onClick={() => setShowSidebar(!showSidebar)}
+                        className={`p-2 rounded-lg transition ${showSidebar ? 'bg-emerald-600' : 'hover:bg-white/10'}`}
+                        title="Mostrar/Ocultar Miniaturas"
+                    >
                         <LayoutGrid className="w-5 h-5" />
                     </button>
-                    <h1 className="font-bold text-sm truncate max-w-[200px] md:max-w-md ml-2">{book.titulo}</h1>
+                    <h1 className="font-bold text-sm truncate max-w-[200px] md:max-w-md ml-2">
+                        {book.titulo}
+                    </h1>
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -174,8 +211,14 @@ export default function PDFViewer() {
                         {pageNumber} / {numPages || '-'}
                     </div>
                     {book.pdfUrl && (
-                        <a href={book.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow">
-                            <Download className="w-4 h-4" /> Descargar PDF
+                        <a
+                            href={book.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow"
+                        >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden md:inline">Descargar PDF</span>
                         </a>
                     )}
                 </div>
@@ -188,19 +231,33 @@ export default function PDFViewer() {
                 <div className="flex-1 overflow-auto flex flex-col items-center p-4 md:p-8 bg-[#121212] relative custom-scrollbar">
 
                     {/* Botones de navegación flotantes */}
-                    <button onClick={() => changePage(-1)} disabled={pageNumber <= 1} className="fixed left-4 md:left-[20%] top-1/2 -translate-y-1/2 z-10 p-3 bg-black/50 hover:bg-emerald-600 text-white rounded-full backdrop-blur-md transition-all disabled:opacity-0 disabled:pointer-events-none shadow-xl transform hover:scale-110">
+                    <button
+                        onClick={() => changePage(-1)}
+                        disabled={pageNumber <= 1}
+                        className="fixed left-4 md:left-[20%] top-1/2 -translate-y-1/2 z-10 p-3 bg-black/50 hover:bg-emerald-600 text-white rounded-full backdrop-blur-md transition-all disabled:opacity-0 disabled:pointer-events-none shadow-xl transform hover:scale-110"
+                    >
                         <ChevronLeft className="w-8 h-8" />
                     </button>
-                    <button onClick={() => changePage(1)} disabled={pageNumber >= numPages} className={`fixed ${showSidebar ? 'right-64 md:right-[calc(16rem+5%)]' : 'right-4 md:right-[5%]'} top-1/2 -translate-y-1/2 z-10 p-3 bg-black/50 hover:bg-emerald-600 text-white rounded-full backdrop-blur-md transition-all disabled:opacity-0 disabled:pointer-events-none shadow-xl transform hover:scale-110`}>
+
+                    <button
+                        onClick={() => changePage(1)}
+                        disabled={pageNumber >= numPages}
+                        className={`fixed ${showSidebar ? 'right-64 md:right-[calc(16rem+5%)]' : 'right-4 md:right-[5%]'} top-1/2 -translate-y-1/2 z-10 p-3 bg-black/50 hover:bg-emerald-600 text-white rounded-full backdrop-blur-md transition-all disabled:opacity-0 disabled:pointer-events-none shadow-xl transform hover:scale-110`}
+                    >
                         <ChevronRight className="w-8 h-8" />
                     </button>
 
-                    {/* El Documento */}
+                    {/* Componente del Documento */}
                     <div className="shadow-2xl transition-transform duration-300 ease-in-out origin-top min-h-full flex items-center animate-in fade-in zoom-in-95">
                         <Document
                             file={book.pdfUrl}
                             onLoadSuccess={onDocumentLoadSuccess}
-                            loading={<div className="flex flex-col items-center text-gray-500"><Loader2 className="w-8 h-8 animate-spin mb-2" /> Cargando documento...</div>}
+                            loading={
+                                <div className="flex flex-col items-center text-gray-500">
+                                    <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                                    Cargando documento...
+                                </div>
+                            }
                             className="bg-white"
                         >
                             <Page

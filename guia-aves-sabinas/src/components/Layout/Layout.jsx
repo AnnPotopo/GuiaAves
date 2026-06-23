@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { BookOpen, Mic, Bird, LogOut, Loader2, BarChart3, Menu, X, Database } from 'lucide-react';
+import { BookOpen, Mic, Bird, LogOut, Loader2, BarChart3, Menu, X, Database, Library } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
 
@@ -53,7 +53,6 @@ export default function Layout() {
         );
     }
 
-    // PANTALLA DE LOGIN (Se muestra para todo si no hay sesión)
     if (!user) {
         return (
             <div className="min-h-screen bg-[#f8f9fa] flex flex-col items-center justify-center p-6 font-sans">
@@ -78,17 +77,16 @@ export default function Layout() {
     const modulos = [
         { id: 'home', titulo: 'Inicio', icono: <Bird className="w-6 h-6 text-gray-500" />, color: 'bg-gray-50 hover:border-gray-300 text-gray-600', ruta: '/', adminOnly: false },
         { id: 'birdapp', titulo: 'Identificador', icono: <Mic className="w-6 h-6 text-emerald-600" />, color: 'bg-emerald-50 hover:border-emerald-300 text-emerald-600', ruta: '/birdapp', adminOnly: false },
-        { id: 'libros', titulo: 'Editor de Libros', icono: <BookOpen className="w-6 h-6 text-blue-600" />, color: 'bg-blue-50 hover:border-blue-300 text-blue-600', ruta: '/libros', adminOnly: true },
+        { id: 'libros', titulo: 'Biblioteca Digital', icono: <Library className="w-6 h-6 text-emerald-600" />, color: 'bg-emerald-50 hover:border-emerald-300 text-emerald-600', ruta: '/libros', adminOnly: false },
+        { id: 'creador', titulo: 'Creador de Guías', icono: <BookOpen className="w-6 h-6 text-blue-600" />, color: 'bg-blue-50 hover:border-blue-300 text-blue-600', ruta: '/creador-guias', adminOnly: true },
         { id: 'dashboard', titulo: 'Centro de Comando', icono: <BarChart3 className="w-6 h-6 text-purple-600" />, color: 'bg-purple-50 hover:border-purple-300 text-purple-600', ruta: '/dashboard', adminOnly: true },
-
-        { id: 'database', titulo: 'Base de Datos (iNat)', icono: <Database className="w-6 h-6 text-amber-600" />, color: 'bg-amber-50 hover:border-amber-300 text-amber-600', ruta: '/database', adminOnly: true },
+        { id: 'database', titulo: 'Base de Datos (iNat)', icono: <Database className="w-6 h-6 text-amber-600" />, color: 'bg-amber-50 hover:border-amber-300 text-amber-600', ruta: '/database', adminOnly: true }
     ];
 
     return (
         <div className="flex h-screen bg-[#f8f9fa] font-sans overflow-hidden">
             {isSidebarOpen && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden transition-opacity" onClick={() => setIsSidebarOpen(false)} />}
 
-            {/* SIDEBAR */}
             <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="p-6 flex items-center justify-between border-b border-gray-100">
                     <div className="flex items-center gap-3">
@@ -126,7 +124,6 @@ export default function Layout() {
                 </div>
             </aside>
 
-            {/* ÁREA PRINCIPAL DINÁMICA */}
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between lg:hidden z-10">
                     <div className="flex items-center gap-3">
@@ -137,7 +134,6 @@ export default function Layout() {
                 </header>
 
                 <div className="flex-1 overflow-y-auto bg-transparent relative">
-                    {/* AQUÍ SE INYECTARÁN TUS MÓDULOS (Home, BirdApp, etc) */}
                     <Outlet context={{ user, isAdmin }} />
                 </div>
             </main>
