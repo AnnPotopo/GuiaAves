@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Upload, Lock, EyeOff, Search, Filter, Compass, User, Image as ImageIcon, Loader2, Bookmark, Settings, ChevronLeft, ChevronRight, TrendingUp, Clock, Star, Library, FolderPlus, Folder, X } from 'lucide-react';
+import { BookOpen, Upload, Lock, EyeOff, Search, Filter, Compass, User, Image as ImageIcon, Loader2, Bookmark, Settings, ChevronLeft, ChevronRight, TrendingUp, Clock, Star, Library, FolderPlus, Folder, X, Flag, AlertTriangle } from 'lucide-react';
+import { collection, getDocs, doc, setDoc, query, where, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase/config';
 import { getAuth } from 'firebase/auth';
@@ -35,10 +36,17 @@ export default function BookList() {
     const [isUploading, setIsUploading] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState('');
 
+    // Ajuste: Por defecto la coleccion es 'generales'
     const [uploadData, setUploadData] = useState({
-        titulo: '', descripcion: '', categorias: [], visibilidad: 'publico', coleccionId: '', file: null, cover: null
+        titulo: '', descripcion: '', categorias: [], visibilidad: 'publico', coleccionId: 'generales', file: null, cover: null
     });
     const [editingBook, setEditingBook] = useState(null);
+
+    // --- ESTADOS PARA DENUNCIAS ---
+    const [reportingBook, setReportingBook] = useState(null);
+    const [reportReason, setReportReason] = useState('');
+    const [reportDetails, setReportDetails] = useState('');
+    const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
     const listaCategorias = ['Conservación', 'Aves', 'Árboles', 'Mamíferos', 'Océano', 'Tecnología', 'General'];
 
@@ -141,7 +149,7 @@ export default function BookList() {
                 descripcion: uploadData.descripcion,
                 categorias: uploadData.categorias,
                 visibilidad: uploadData.visibilidad,
-                coleccionId: uploadData.coleccionId || null,
+                coleccionId: uploadData.coleccionId || 'generales', // Aseguramos que siempre tenga al menos 'generales'
                 pdfUrl: pdfUrl,
                 coverUrl: coverUrl,
                 authorId: user.uid,
@@ -155,9 +163,15 @@ export default function BookList() {
             await addDoc(collection(db, "libros_publicados"), newBook);
             alert("¡Publicación subida con éxito!");
             setShowUploadModal(false);
-            setUploadData({ titulo: '', descripcion: '', categorias: [], visibilidad: 'publico', coleccionId: '', file: null, cover: null });
+            // Al limpiar, volvemos a poner 'generales' por defecto
+            setUploadData({ titulo: '', descripcion: '', categorias: [], visibilidad: 'publico', coleccionId: 'generales', file: null, cover: null });
             cargarLibros();
-        } catch (error) { alert("Error al subir archivo."); } finally { setIsUploading(false); }
+        } catch (error) {
+            console.error("DETALLE DEL ERROR:", error);
+            alert("Error de Firebase: " + error.message);
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const handleUpdateCover = async (e) => {
@@ -168,6 +182,36 @@ export default function BookList() {
         const url = await getDownloadURL(storageRef);
         await setDoc(doc(db, "usuarios", user.uid), { coverUrl: url, uid: user.uid }, { merge: true });
         setProfileData(prev => ({ ...prev, coverUrl: url }));
+    };
+
+    // --- FUNCIÓN PARA ENVIAR DENUNCIA ---
+    const handleSubmitReport = async (e) => {
+        e.preventDefault();
+        if (!reportReason) return alert("Selecciona un motivo de denuncia.");
+
+        setIsSubmittingReport(true);
+        try {
+            await addDoc(collection(db, "denuncias"), {
+                bookId: reportingBook.id,
+                bookTitle: reportingBook.titulo,
+                reportedAuthorId: reportingBook.authorId,
+                reporterId: user.uid,
+                reporterName: user.displayName || user.email,
+                reason: reportReason,
+                details: reportDetails,
+                status: 'pendiente', // pendiente, resuelto, ignorado
+                createdAt: Date.now()
+            });
+            alert("Denuncia enviada exitosamente. Un administrador revisará el caso.");
+            setReportingBook(null);
+            setReportReason('');
+            setReportDetails('');
+        } catch (error) {
+            console.error(error);
+            alert("Hubo un error al enviar tu reporte.");
+        } finally {
+            setIsSubmittingReport(false);
+        }
     };
 
     const librosFiltrados = books.filter(b => {
@@ -231,9 +275,22 @@ export default function BookList() {
                 >
                     Por {book.authorName}
                 </p>
-                <div className="flex justify-between items-center text-[9px] text-gray-400 font-bold">
-                    <span>{new Date(book.createdAt).toLocaleDateString()}</span>
-                    <span>👁️ {book.views || 0}</span>
+                <div className="flex justify-between items-center text-[9px] text-gray-400 font-bold mt-2">
+                    <div className="flex gap-2">
+                        <span>{new Date(book.createdAt).toLocaleDateString()}</span>
+                        <span>👁️ {book.views || 0}</span>
+                    </div>
+
+                    {/* BOTÓN DE DENUNCIA (Visible si no es tu propio libro) */}
+                    {user && book.authorId !== user.uid && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setReportingBook(book); }}
+                            className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                            title="Reportar esta publicación"
+                        >
+                            <Flag className="w-3.5 h-3.5" />
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -397,8 +454,11 @@ export default function BookList() {
                                         <button onClick={() => setSelectedColeccion('Todos')} className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition ${selectedColeccion === 'Todos' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                                             📁 Ver Todos
                                         </button>
+                                        <button onClick={() => setSelectedColeccion('generales')} className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition mt-1 ${selectedColeccion === 'generales' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                            📄 PDFs Generales
+                                        </button>
                                         {colecciones.map(col => (
-                                            <button key={col.id} onClick={() => setSelectedColeccion(col.id)} className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition truncate ${selectedColeccion === col.id ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                                            <button key={col.id} onClick={() => setSelectedColeccion(col.id)} className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition truncate mt-1 ${selectedColeccion === col.id ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                                                 📂 {col.nombre}
                                             </button>
                                         ))}
@@ -455,7 +515,7 @@ export default function BookList() {
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Asignar a Colección</label>
                                     <select value={uploadData.coleccionId} onChange={e => setUploadData({ ...uploadData, coleccionId: e.target.value })} className="w-full border border-gray-300 rounded-xl p-2.5 text-sm bg-white outline-none">
-                                        <option value="">Ninguna (Raíz)</option>
+                                        <option value="generales">📁 PDFs Generales</option>
                                         {colecciones.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                                     </select>
                                 </div>
@@ -505,6 +565,51 @@ export default function BookList() {
                             <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
                                 <button type="button" onClick={() => setShowCollectionModal(false)} className="px-3 py-1.5 rounded-xl text-xs font-bold text-gray-500">Cancelar</button>
                                 <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-xl text-xs font-bold shadow-sm">Crear Grupo</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: DENUNCIAR PUBLICACIÓN */}
+            {reportingBook && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-in fade-in">
+                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95">
+                        <div className="p-4 border-b border-gray-100 bg-red-50 flex justify-between items-center">
+                            <h2 className="text-sm font-black text-red-800 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 text-red-600" /> Reportar Publicación</h2>
+                            <button onClick={() => setReportingBook(null)} className="text-red-400 bg-red-100 hover:bg-red-200 p-1 rounded-full transition"><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                        <form onSubmit={handleSubmitReport} className="p-5 space-y-4">
+                            <p className="text-xs text-gray-600">
+                                Estás reportando: <strong className="text-gray-800">"{reportingBook.titulo}"</strong>
+                            </p>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Motivo de la denuncia</label>
+                                <select required value={reportReason} onChange={e => setReportReason(e.target.value)} className="w-full border border-gray-300 rounded-xl p-2.5 text-sm bg-white outline-none focus:border-red-400">
+                                    <option value="">Selecciona un motivo...</option>
+                                    <option value="plagio">Copia o Plagio de contenido</option>
+                                    <option value="desinformacion">Desinformación / Datos falsos</option>
+                                    <option value="sexual">Contenido sexual explícito</option>
+                                    <option value="odio">Discurso de odio / Acoso</option>
+                                    <option value="spam">Spam / Publicidad engañosa</option>
+                                    <option value="otro">Otro motivo</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Detalles adicionales (Opcional)</label>
+                                <textarea
+                                    value={reportDetails}
+                                    onChange={e => setReportDetails(e.target.value)}
+                                    rows="3"
+                                    placeholder="Explica brevemente por qué reportas este documento..."
+                                    className="w-full border border-gray-300 rounded-xl p-2.5 text-sm outline-none resize-none focus:border-red-400"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                                <button type="button" onClick={() => setReportingBook(null)} className="px-3 py-1.5 rounded-xl text-xs font-bold text-gray-500">Cancelar</button>
+                                <button type="submit" disabled={isSubmittingReport} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5">
+                                    {isSubmittingReport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null} Enviar Reporte
+                                </button>
                             </div>
                         </form>
                     </div>

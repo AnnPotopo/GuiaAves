@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../../firebase/config'; // <-- Importación correcta
 import { Mic, Library, Square, AlertCircle, Loader2, Award, X, Check, MapPin, Search, Volume2, Info, Calendar, Navigation, Edit3, Activity, Radar, Map, ClipboardList, Speaker } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Achievements from './Achievements';
@@ -9,24 +9,6 @@ import MapExplore from './MapExplore';
 import BirdChecklist from './BirdChecklist';
 import { diccionarioAves } from './diccionarioSabinas';
 import BirdSoundBox from './BirdSoundBox';
-
-const firebaseConfig = {
-    apiKey: "AIzaSyC2UNjl2dW0v_JH7-ScMUTnLkl64_7rsvM",
-    authDomain: "librostools.firebaseapp.com",
-    projectId: "librostools",
-    storageBucket: "librostools.firebasestorage.app",
-    messagingSenderId: "442055444824",
-    appId: "1:442055444824:web:1722e67e11497edd2afd2d",
-    measurementId: "G-M7MQHHR58B"
-};
-
-const app = initializeApp(firebaseConfig);
-
-const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-});
-
-const auth = getAuth(app);
 
 const limpiarTexto = (texto) => {
     if (!texto) return "";
@@ -36,37 +18,29 @@ const limpiarTexto = (texto) => {
 export default function BirdApp() {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
-
     const [activeTab, setActiveTab] = useState('identify');
     const [subTab, setSubTab] = useState('catalog');
-
     const [avesBook, setAvesBook] = useState([]);
     const [progreso, setProgreso] = useState({});
     const [loadingDB, setLoadingDB] = useState(true);
-
     const [ubicacion, setUbicacion] = useState('Sabinas Hidalgo, N.L.');
     const [latitud, setLatitud] = useState(26.4953);
     const [longitud, setLongitud] = useState(-100.1755);
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [tempLocation, setTempLocation] = useState('');
-
     const [avesRadar, setAvesRadar] = useState([]);
     const [loadingRadar, setLoadingRadar] = useState(false);
-
     const [isRecording, setIsRecording] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [sugerenciasIA, setSugerenciasIA] = useState(null);
     const [showConfirmationAnim, setShowConfirmationAnim] = useState(false);
-
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const streamRef = useRef(null);
-
     const canvasRef = useRef(null);
     const audioContextRef = useRef(null);
     const analyserRef = useRef(null);
     const animationFrameRef = useRef(null);
-
     const [filtro, setFiltro] = useState('todas');
     const [selectedAve, setSelectedAve] = useState(null);
     const [audioCanto, setAudioCanto] = useState('');
@@ -79,16 +53,13 @@ export default function BirdApp() {
                 return;
             }
             setUser(currentUser);
-
             try {
                 const querySnapshot = await getDocs(collection(db, "especies"));
                 const data = [];
                 querySnapshot.forEach((documento) => data.push({ id: documento.id, ...documento.data() }));
                 setAvesBook(data);
-
                 const progresoRef = doc(db, "colecciones_usuarios", currentUser.uid);
                 const progresoSnap = await getDoc(progresoRef);
-
                 if (progresoSnap.exists()) {
                     setProgreso(progresoSnap.data());
                 } else {
@@ -100,7 +71,6 @@ export default function BirdApp() {
                 setLoadingDB(false);
             }
         });
-
         return () => unsubscribe();
     }, [navigate]);
 
@@ -112,29 +82,22 @@ export default function BirdApp() {
                 const latMax = (latitud + 0.1).toFixed(4);
                 const lonMin = (longitud - 0.1).toFixed(4);
                 const lonMax = (longitud + 0.1).toFixed(4);
-
                 const url = `https://api.gbif.org/v1/occurrence/search?taxonKey=212&hasCoordinate=true&decimalLatitude=${latMin},${latMax}&decimalLongitude=${lonMin},${lonMax}&limit=50`;
-
                 const res = await fetch(url);
                 const data = await res.json();
-
                 const especiesUnicas = [];
                 const nombresVistos = new Set();
-
                 data.results.forEach(obs => {
                     if (obs.species && !nombresVistos.has(obs.species)) {
                         nombresVistos.add(obs.species);
-
                         const cientificoLimpio = limpiarTexto(obs.species);
                         const nombreTraducido = diccionarioAves[cientificoLimpio] || obs.vernacularName || 'Especie local';
-
                         especiesUnicas.push({
                             cientifico: obs.species,
                             comun: nombreTraducido
                         });
                     }
                 });
-
                 setAvesRadar(especiesUnicas);
             } catch (error) {
                 console.error("Error en el radar:", error);
@@ -142,7 +105,6 @@ export default function BirdApp() {
                 setLoadingRadar(false);
             }
         };
-
         if (activeTab === 'identify') {
             buscarAvesRadar();
         }
@@ -221,7 +183,6 @@ export default function BirdApp() {
         const height = canvas.height;
         const bufferLength = analyserRef.current.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
-
         const draw = () => {
             if (mediaRecorderRef.current?.state !== "recording") {
                 ctx.clearRect(0, 0, width, height);
@@ -259,44 +220,35 @@ export default function BirdApp() {
 
     const iniciarGrabacion = async () => {
         if (!navigator.onLine) {
-            alert("🌲 Estás en Modo Supervivencia (Sin conexión).\n\nPuedes navegar por el catálogo y ver tu colección guardada, pero el identificador requiere internet.");
+            alert("⚠️ Estás en Modo Supervivencia (Sin conexión).\n\nPuedes navegar por el catálogo y ver tu colección guardada, pero el identificador requiere internet.");
             return;
         }
         if (avesBook.length === 0) return alert("Espera a que cargue la base de datos.");
-
         try {
             streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
             const options = { mimeType: getSupportedMimeType() };
             mediaRecorderRef.current = new MediaRecorder(streamRef.current, options);
-
             audioChunksRef.current = [];
             setSugerenciasIA(null);
-
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
             const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
             analyserRef.current = audioContextRef.current.createAnalyser();
             analyserRef.current.fftSize = 256;
             source.connect(analyserRef.current);
-
             mediaRecorderRef.current.ondataavailable = (e) => audioChunksRef.current.push(e.data);
-
             mediaRecorderRef.current.onstop = async () => {
                 setIsRecording(false);
                 setIsProcessing(true);
-
                 if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
                 if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-
                 const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
                 const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
                 const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-
                 const formData = new FormData();
                 formData.append("audio", audioBlob, `grabacion.${extension}`);
                 formData.append("lat", latitud);
                 formData.append("lon", longitud);
                 formData.append("week", obtenerSemanaDelAno());
-
                 try {
                     const res = await fetch("https://annpotopo-api-aves-backend.hf.space/identificar", { method: "POST", body: formData });
                     const datosIA = await res.json();
@@ -307,11 +259,9 @@ export default function BirdApp() {
                     setIsProcessing(false);
                 }
             };
-
             mediaRecorderRef.current.start();
             setIsRecording(true);
             dibujarOndas();
-
         } catch (e) {
             alert("Permiso de micrófono denegado.");
         }
@@ -326,17 +276,12 @@ export default function BirdApp() {
     const procesarInteligencia = (datosIA) => {
         let enLibro = [];
         let extras = [];
-
         const listaAves = datosIA.aves || [];
-
         listaAves.forEach(aveDetectada => {
             const cientifico = aveDetectada.scientificName || "";
-
             let confNum = parseFloat(aveDetectada.confidence) || 0;
             let confianzaFinal = confNum <= 1.0 ? (confNum * 100).toFixed(0) : confNum.toFixed(0);
-
             const cientificoLimpio = limpiarTexto(cientifico);
-
             let nombreTraducido = diccionarioAves[cientificoLimpio];
             if (!nombreTraducido) {
                 if (cientificoLimpio === 'aves') {
@@ -345,11 +290,9 @@ export default function BirdApp() {
                     nombreTraducido = aveDetectada.commonName || 'Ave Silvestre';
                 }
             }
-
             const coincidenciaLibro = avesBook.find(aveLocal =>
                 aveLocal.nombreCientifico && limpiarTexto(aveLocal.nombreCientifico) === cientificoLimpio
             );
-
             if (coincidenciaLibro) {
                 if (!enLibro.find(a => a.id === coincidenciaLibro.id)) {
                     enLibro.push({
@@ -367,34 +310,27 @@ export default function BirdApp() {
                 }
             }
         });
-
         setSugerenciasIA({ libro: enLibro, extras: extras });
     };
 
     const confirmarAvistamiento = async (aveId) => {
         if (!user) return;
-
         const nuevoProgreso = { ...progreso };
         const actual = getDatosAvistamiento(aveId);
-
         nuevoProgreso[aveId] = {
             count: actual.vistas + 1,
             lastSeen: new Date().toISOString(),
             location: ubicacion
         };
-
         setProgreso(nuevoProgreso);
-
         try {
             const progresoRef = doc(db, "colecciones_usuarios", user.uid);
             await setDoc(progresoRef, nuevoProgreso);
         } catch (error) {
             console.error("Error guardando progreso en Firebase:", error);
         }
-
         setShowConfirmationAnim(aveId);
         setTimeout(() => setShowConfirmationAnim(false), 1500);
-
         const libroActualizado = sugerenciasIA.libro.filter(ave => ave.id !== aveId);
         setSugerenciasIA({ ...sugerenciasIA, libro: libroActualizado });
     };
@@ -409,7 +345,6 @@ export default function BirdApp() {
 
     return (
         <div className="h-full bg-gray-50 flex flex-col font-sans text-gray-800 overflow-hidden relative">
-
             <header className="bg-white p-4 flex justify-between items-center z-10 shrink-0 border-b border-gray-200 shadow-sm">
                 <div className="flex flex-col">
                     <h1 className="text-lg font-extrabold text-emerald-700 tracking-tight">BirdSound ID</h1>
@@ -426,9 +361,7 @@ export default function BirdApp() {
                     <X className="w-5 h-5" />
                 </button>
             </header>
-
             <div className="flex-1 overflow-y-auto pb-24 relative flex flex-col">
-
                 {activeTab === 'identify' && (
                     <div className="flex flex-col items-center justify-start h-full p-6">
                         <div className="mt-4 mb-8 flex flex-col items-center justify-center w-full">
@@ -447,7 +380,6 @@ export default function BirdApp() {
                                     </span>
                                 </button>
                             </div>
-
                             <div className={`transition-opacity duration-300 ${isRecording ? 'opacity-100' : 'opacity-0'}`}>
                                 <canvas ref={canvasRef} width="200" height="40" className="rounded-lg"></canvas>
                                 <p className="text-[10px] text-gray-400 font-bold text-center mt-1 uppercase flex items-center justify-center gap-1">
@@ -455,7 +387,6 @@ export default function BirdApp() {
                                 </p>
                             </div>
                         </div>
-
                         {sugerenciasIA ? (
                             <div className="w-full max-w-lg animate-in slide-in-from-bottom-4 duration-300">
                                 {sugerenciasIA.libro.length > 0 && (
@@ -463,7 +394,6 @@ export default function BirdApp() {
                                         <h3 className="text-emerald-600 font-bold text-[11px] uppercase tracking-widest mb-3 px-1">Registradas en tu libro</h3>
                                         {sugerenciasIA.libro.map(ave => (
                                             <div key={ave.id} className="bg-white rounded-xl p-3 mb-4 shadow-sm border border-emerald-200 flex items-center gap-4 transition-all hover:shadow-md">
-
                                                 <div className="relative w-16 h-16 rounded-lg bg-cover bg-center border border-gray-100 shrink-0" style={{ backgroundImage: `url(${ave.imagenUrl})` }}>
                                                     {ave.confianzaIA && (
                                                         <div className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10">
@@ -471,7 +401,6 @@ export default function BirdApp() {
                                                         </div>
                                                     )}
                                                 </div>
-
                                                 <div className="flex-1 min-w-0">
                                                     <h4 className="font-bold text-gray-800 text-sm truncate">{ave.nombreComun}</h4>
                                                     <p className="text-xs text-gray-500 italic truncate">{ave.nombreCientifico}</p>
@@ -486,7 +415,6 @@ export default function BirdApp() {
                                         ))}
                                     </>
                                 )}
-
                                 {sugerenciasIA.extras.length > 0 && (
                                     <div className="mt-6">
                                         <h3 className="text-gray-400 font-bold text-[11px] uppercase tracking-widest mb-3 px-1">Detecciones Probables (Fuera del libro)</h3>
@@ -507,7 +435,6 @@ export default function BirdApp() {
                                         ))}
                                     </div>
                                 )}
-
                                 {sugerenciasIA.libro.length === 0 && sugerenciasIA.extras.length === 0 && (
                                     <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-200 border-dashed mt-4">
                                         <AlertCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
@@ -520,7 +447,6 @@ export default function BirdApp() {
                                 <h3 className="text-gray-600 font-bold text-[11px] uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
                                     <Radar className="w-4 h-4 text-emerald-500" /> Radar de Aves en tu zona hoy
                                 </h3>
-
                                 {loadingRadar ? (
                                     <div className="flex items-center justify-center py-6 text-gray-400 gap-2 text-sm">
                                         <Loader2 className="animate-spin w-4 h-4" /> Escaneando área...
@@ -542,7 +468,6 @@ export default function BirdApp() {
                                 )}
                             </div>
                         )}
-
                         {showConfirmationAnim && (
                             <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center animate-in fade-in backdrop-blur-sm">
                                 <div className="text-center">
@@ -556,11 +481,9 @@ export default function BirdApp() {
                         )}
                     </div>
                 )}
-
                 {activeTab === 'explore' && (
                     <MapExplore db={db} user={user} />
                 )}
-
                 {activeTab === 'lists' && (
                     <BirdChecklist
                         db={db}
@@ -569,15 +492,13 @@ export default function BirdApp() {
                         avesRadar={avesRadar}
                     />
                 )}
-
-                {/* 👇 AQUÍ RENDERIZAMOS EL NUEVO COMPONENTE BIRD SOUND BOX */}
+                {/* AQUÍ RENDERIZAMOS EL NUEVO COMPONENTE BIRD SOUND BOX */}
                 {activeTab === 'soundbox' && (
                     <BirdSoundBox
                         db={db}
                         user={user}
                     />
                 )}
-
                 {activeTab === 'collection' && (
                     <div className="p-4 md:p-6 bg-white min-h-full flex flex-col">
                         <div className="flex bg-gray-100 p-1 rounded-xl mb-6 shrink-0">
@@ -594,7 +515,6 @@ export default function BirdApp() {
                                 Mis Logros
                             </button>
                         </div>
-
                         {subTab === 'catalog' ? (
                             <div className="animate-in fade-in duration-300">
                                 <div className="mb-6">
@@ -610,7 +530,6 @@ export default function BirdApp() {
                                         ))}
                                     </div>
                                 </div>
-
                                 {Object.keys(avesPorOrden).length === 0 ? (
                                     <div className="text-center py-12 text-gray-400">
                                         <Search className="w-12 h-12 mx-auto mb-3 opacity-20" />
@@ -621,12 +540,10 @@ export default function BirdApp() {
                                         <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2 mb-4">
                                             {orden} <span className="text-gray-300 normal-case font-normal ml-1">({avesDelOrden.length})</span>
                                         </h3>
-
                                         <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x">
                                             {avesDelOrden.map(ave => {
                                                 const { vistas } = getDatosAvistamiento(ave.id);
                                                 const desbloqueada = vistas > 0;
-
                                                 let borde = '';
                                                 if (!desbloqueada) {
                                                     borde = 'border-gray-500 opacity-80 filter grayscale brightness-[0.4] bg-gray-300 cursor-default';
@@ -639,7 +556,6 @@ export default function BirdApp() {
                                                 } else {
                                                     borde = 'border-[#95a5a6] border-4 cursor-pointer hover:scale-105 transition-transform shadow-md';
                                                 }
-
                                                 return (
                                                     <div key={ave.id} className="snap-start flex flex-col items-center w-24 shrink-0">
                                                         <div
@@ -670,7 +586,6 @@ export default function BirdApp() {
                     </div>
                 )}
             </div>
-
             {/* --- MODAL DE UBICACIÓN --- */}
             {showLocationModal && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 animate-in fade-in">
@@ -704,7 +619,6 @@ export default function BirdApp() {
                     </div>
                 </div>
             )}
-
             {/* --- FICHA DEL AVE --- */}
             {selectedAve && (
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-gray-900/60 backdrop-blur-sm p-0 sm:p-6 animate-in fade-in duration-200">
@@ -712,20 +626,17 @@ export default function BirdApp() {
                         <button onClick={() => setSelectedAve(null)} className="absolute top-4 right-4 z-10 bg-black/40 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-md transition">
                             <X className="w-5 h-5" />
                         </button>
-
                         <div
                             className="w-full h-64 sm:h-72 bg-cover bg-center shrink-0 relative"
                             style={{ backgroundImage: `url('${selectedAve.imagenUrl || ''}')` }}
                         >
                             <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
                         </div>
-
                         <div className="p-6 overflow-y-auto flex-1">
                             <div className="mb-6">
                                 <h2 className="text-3xl font-extrabold text-gray-900 leading-tight mb-1">{selectedAve.nombreComun}</h2>
                                 <p className="text-emerald-600 font-medium italic text-lg">{selectedAve.nombreCientifico}</p>
                             </div>
-
                             <div className="flex gap-4 mb-6">
                                 <div className="bg-emerald-50 rounded-xl p-3 flex-1 border border-emerald-100">
                                     <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-0.5">Orden</p>
@@ -736,7 +647,6 @@ export default function BirdApp() {
                                     <p className="text-sm text-gray-800 font-semibold">{selectedAve.familia || 'N/A'}</p>
                                 </div>
                             </div>
-
                             <div className="space-y-6 mb-6">
                                 {selectedAve.habitat && (
                                     <div>
@@ -760,7 +670,6 @@ export default function BirdApp() {
                                     </div>
                                 )}
                             </div>
-
                             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                                 <h4 className="flex items-center gap-1.5 text-gray-800 font-bold mb-3"><Volume2 className="w-4 h-4 text-indigo-500" /> Canto de la especie</h4>
                                 {buscandoAudio ? (
@@ -777,8 +686,7 @@ export default function BirdApp() {
                     </div>
                 </div>
             )}
-
-            {/* 👇 MENÚ INFERIOR ACTUALIZADO CON 5 BOTONES */}
+            {/* MENÚ INFERIOR ACTUALIZADO CON 5 BOTONES */}
             <nav className="bg-white border-t border-gray-200 flex justify-between items-center pb-safe fixed bottom-0 w-full h-16 shrink-0 z-40 px-1 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 <button onClick={() => setActiveTab('identify')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'identify' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
                     <Mic className={`w-5 h-5 ${activeTab === 'identify' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Identificar</span>
@@ -792,12 +700,10 @@ export default function BirdApp() {
                 <button onClick={() => setActiveTab('collection')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'collection' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
                     <Library className={`w-5 h-5 ${activeTab === 'collection' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Mi Libro</span>
                 </button>
-                {/* BOTÓN NUEVO */}
                 <button onClick={() => setActiveTab('soundbox')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'soundbox' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>
                     <Speaker className={`w-5 h-5 ${activeTab === 'soundbox' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">SoundBox</span>
                 </button>
             </nav>
-
         </div>
     );
 }

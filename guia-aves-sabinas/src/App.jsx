@@ -5,6 +5,7 @@ import Home from './components/Home/Home';
 import BirdApp from './components/BirdApp/BirdApp';
 import BookList from './components/Dashboard/BookList';
 import UserProfile from './components/Dashboard/UserProfile';
+import ModerationPanel from './components/Dashboard/ModerationPanel';
 import EditorLayout from './components/Editor/EditorLayout';
 import EditorDashboard from './components/Editor/EditorDashboard';
 import PDFViewer from './components/Editor/PDFViewer';
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="creador-guias" element={<EditorDashboard />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="database" element={<DatabaseManager />} />
+          <Route path="moderacion" element={<ModerationPanel />} />
         </Route>
 
         <Route path="/perfil/:usuarioId" element={<UserProfile />} />

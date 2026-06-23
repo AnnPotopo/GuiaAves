@@ -1,21 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { BookOpen, Mic, Bird, LogOut, Loader2, BarChart3, Menu, X, Database, Library } from 'lucide-react';
-import { initializeApp } from 'firebase/app';
+import { BookOpen, Mic, Bird, LogOut, Loader2, BarChart3, Menu, X, Database, Library, ShieldAlert } from 'lucide-react';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config'; // <-- Importamos tu base de datos global
 
-const firebaseConfig = {
-    apiKey: "AIzaSyC2UNjl2dW0v_JH7-ScMUTnLkl64_7rsvM",
-    authDomain: "librostools.firebaseapp.com",
-    projectId: "librostools",
-    storageBucket: "librostools.firebasestorage.app",
-    messagingSenderId: "442055444824",
-    appId: "1:442055444824:web:1722e67e11497edd2afd2d",
-    measurementId: "G-M7MQHHR58B"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// Ya no encendemos Firebase aquí, solo usamos los servicios
+const auth = getAuth();
 const provider = new GoogleAuthProvider();
 
 export default function Layout() {
@@ -35,7 +26,18 @@ export default function Layout() {
 
     const handleLogin = async () => {
         try {
-            await signInWithPopup(auth, provider);
+            const result = await signInWithPopup(auth, provider);
+            const loggedUser = result.user;
+
+            // Creamos o actualizamos el perfil de Firestore inmediatamente tras loguearse
+            await setDoc(doc(db, "usuarios", loggedUser.uid), {
+                uid: loggedUser.uid,
+                displayName: loggedUser.displayName,
+                email: loggedUser.email,
+                avatarUrl: loggedUser.photoURL || '',
+                estadoBaneo: 'activo'
+            }, { merge: true });
+
         } catch (error) {
             alert("Hubo un problema al iniciar sesión con Google.");
         }
@@ -80,7 +82,8 @@ export default function Layout() {
         { id: 'libros', titulo: 'Biblioteca Digital', icono: <Library className="w-6 h-6 text-emerald-600" />, color: 'bg-emerald-50 hover:border-emerald-300 text-emerald-600', ruta: '/libros', adminOnly: false },
         { id: 'creador', titulo: 'Creador de Guías', icono: <BookOpen className="w-6 h-6 text-blue-600" />, color: 'bg-blue-50 hover:border-blue-300 text-blue-600', ruta: '/creador-guias', adminOnly: true },
         { id: 'dashboard', titulo: 'Centro de Comando', icono: <BarChart3 className="w-6 h-6 text-purple-600" />, color: 'bg-purple-50 hover:border-purple-300 text-purple-600', ruta: '/dashboard', adminOnly: true },
-        { id: 'database', titulo: 'Base de Datos (iNat)', icono: <Database className="w-6 h-6 text-amber-600" />, color: 'bg-amber-50 hover:border-amber-300 text-amber-600', ruta: '/database', adminOnly: true }
+        { id: 'database', titulo: 'Base de Datos (iNat)', icono: <Database className="w-6 h-6 text-amber-600" />, color: 'bg-amber-50 hover:border-amber-300 text-amber-600', ruta: '/database', adminOnly: true },
+        { id: 'moderacion', titulo: 'Moderación', icono: <ShieldAlert className="w-6 h-6 text-red-600" />, color: 'bg-red-50 hover:border-red-300 text-red-600', ruta: '/moderacion', adminOnly: true }
     ];
 
     return (

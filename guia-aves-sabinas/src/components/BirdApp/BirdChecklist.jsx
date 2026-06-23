@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { collection, addDoc } from 'firebase/firestore';
-import { ClipboardList, Play, Square, Plus, Minus, Send, MapPin, Clock, Map as MapIcon, Route, Loader2 } from 'lucide-react';
+import { ClipboardList, Play, Square, Plus, Minus, Send, MapPin, Clock, Map as MapIcon, Route } from 'lucide-react';
 import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-// 👇 AQUÍ ESTÁ EL IMPORT QUE FALTABA
 import { diccionarioAves } from './diccionarioSabinas';
 
 // Función matemática para calcular distancia entre dos coordenadas (Fórmula de Haversine)
@@ -17,7 +16,6 @@ const calcularDistanciaKm = (lat1, lon1, lat2, lon2) => {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-// Se agregó avesRadar = [] por si acaso la variable llega vacía no marque error
 export default function BirdChecklist({ db, user, ubicacion, avesRadar = [] }) {
     const [isActive, setIsActive] = useState(false);
     const [startTime, setStartTime] = useState(null);
@@ -40,12 +38,11 @@ export default function BirdChecklist({ db, user, ubicacion, avesRadar = [] }) {
             watchIdRef.current = navigator.geolocation.watchPosition(
                 (pos) => {
                     const nuevaPos = [pos.coords.latitude, pos.coords.longitude];
-
                     setTrack(prevTrack => {
                         if (prevTrack.length > 0) {
                             const ultimoPunto = prevTrack[prevTrack.length - 1];
                             const dist = calcularDistanciaKm(ultimoPunto[0], ultimoPunto[1], nuevaPos[0], nuevaPos[1]);
-                            if (dist > 0.005) {
+                            if (dist > 0.005) { // Solo guarda si se movió más de 5 metros
                                 setDistanciaKm(d => d + dist);
                                 return [...prevTrack, nuevaPos];
                             }
@@ -73,7 +70,7 @@ export default function BirdChecklist({ db, user, ubicacion, avesRadar = [] }) {
     };
 
     const finalizarYEnviar = async () => {
-        if (Object.keys(listaAves).length === 0) return alert("La lista está vacía.");
+        if (Object.keys(listaAves).length === 0) return alert("La lista está vacía. Añade al menos un ave antes de guardar.");
 
         const confirmacion = window.confirm("¿Deseas finalizar y enviar esta lista a la base de datos?");
         if (!confirmacion) return;
@@ -90,160 +87,128 @@ export default function BirdChecklist({ db, user, ubicacion, avesRadar = [] }) {
                 userId: user.uid,
                 userName: user.displayName,
                 userEmail: user.email,
-                ubicacion: ubicacion,
-                tipo: tipoObservacion,
-                fecha: startTime.toISOString(),
+                fecha: new Date().toISOString(),
                 duracion: duracionMinutos,
-                distanciaKm: parseFloat(distanciaKm.toFixed(2)),
-                rutaGPS: track,
-                aves: listaAves,
-                estado: 'completada'
+                tipo: tipoObservacion,
+                ubicacion: ubicacion,
+                distanciaKm: distanciaKm,
+                rutaGps: track,
+                aves: listaAves
             });
-
-            alert("¡Lista enviada con éxito!");
+            alert("¡Lista enviada y guardada correctamente!");
             setIsActive(false);
             setListaAves({});
             setTrack([]);
-        } catch (e) {
-            console.error(e);
-            alert("Error al enviar la lista.");
+        } catch (error) {
+            console.error("Error al enviar lista: ", error);
+            alert("Hubo un error al guardar la lista en la nube.");
         }
     };
 
-    useEffect(() => {
-        return () => {
-            if (watchIdRef.current !== null) {
-                navigator.geolocation.clearWatch(watchIdRef.current);
-            }
-        };
-    }, []);
-
     if (!isActive) {
         return (
-            <div className="p-6 flex flex-col items-center justify-center h-full animate-in fade-in pb-20">
-                <div className="bg-emerald-50 p-6 rounded-full mb-6 relative">
+            <div className="flex flex-col items-center justify-center p-6 h-full text-center">
+                <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
                     <ClipboardList className="w-12 h-12 text-emerald-600" />
-                    <div className="absolute bottom-2 right-2 bg-blue-500 rounded-full p-1 border-2 border-white">
-                        <Route className="w-4 h-4 text-white" />
-                    </div>
                 </div>
-                <h2 className="text-2xl font-black text-gray-800 mb-2">Nueva Lista con Track</h2>
-                <p className="text-gray-500 text-center mb-8 max-w-xs text-sm">
-                    Comienza una sesión. Tu celular registrará tu recorrido en el mapa automáticamente mientras cuentas aves.
+                <h2 className="text-2xl font-black text-gray-800 mb-2">Nueva Lista de Observación</h2>
+                <p className="text-gray-500 mb-8 text-sm max-w-xs leading-relaxed">
+                    Registra todas las aves que veas o escuches en esta expedición para aportar datos a la comunidad científica.
                 </p>
+                <div className="w-full max-w-xs mb-8 text-left bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Protocolo de Observación</label>
+                    <select
+                        value={tipoObservacion}
+                        onChange={(e) => setTipoObservacion(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 text-gray-800 rounded-lg p-3 text-sm outline-none focus:border-emerald-500 font-medium"
+                    >
+                        <option value="desplazamiento">Con desplazamiento (Caminando)</option>
+                        <option value="estacionario">Estacionario (Punto Fijo)</option>
+                        <option value="incidental">Incidental (Casual)</option>
+                    </select>
+                </div>
                 <button
                     onClick={iniciarLista}
-                    className="w-full max-w-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95"
+                    className="flex items-center gap-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 px-8 rounded-full shadow-lg shadow-emerald-200 transition-all active:scale-95"
                 >
-                    <Play className="w-5 h-5 fill-current" /> Iniciar Recorrido
+                    <Play className="w-5 h-5 fill-current" /> Iniciar Observación
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full bg-white animate-in slide-in-from-bottom-4 pb-16">
-            {/* Header de Sesión */}
-            <div className="p-4 bg-gray-900 text-white shadow-xl shrink-0 z-20">
-                <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col h-full bg-gray-50 relative overflow-hidden">
+            {/* Panel Superior Fijo */}
+            <div className="bg-emerald-700 text-white p-4 shadow-md shrink-0 z-10 flex flex-col gap-3">
+                <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">En recorrido</span>
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                        <span className="font-bold text-sm">Grabando Ruta...</span>
                     </div>
-                    <button
-                        onClick={finalizarYEnviar}
-                        className="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-1.5 rounded-full text-xs font-black flex items-center gap-1 shadow-lg transition-colors"
-                    >
-                        <Send className="w-3 h-3" /> Finalizar
-                    </button>
-                </div>
-                <div className="flex items-center gap-4 overflow-x-auto pb-2 text-[10px] font-mono">
-                    <div className="flex items-center gap-1 shrink-0"><Clock className="w-3 h-3 text-blue-400" /> {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                    <div className="flex items-center gap-1 shrink-0"><Route className="w-3 h-3 text-amber-400" /> {distanciaKm.toFixed(2)} km</div>
-                    <div className="flex items-center gap-1 shrink-0"><MapIcon className="w-3 h-3 text-emerald-400" /> Puntos GPS: {track.length}</div>
+                    <div className="text-xs font-mono bg-black/20 px-2 py-1 rounded-md flex gap-3">
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {Math.max(1, Math.round((new Date() - startTime) / 60000))} min</span>
+                        {tipoObservacion === 'desplazamiento' && (
+                            <span className="flex items-center gap-1"><Route className="w-3 h-3" /> {distanciaKm.toFixed(2)} km</span>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* MINI MAPA EN VIVO */}
-            <div className="h-40 w-full bg-gray-200 shrink-0 relative border-b-2 border-gray-300">
-                {track.length > 0 ? (
-                    <MapContainer
-                        center={track[track.length - 1]}
-                        zoom={16}
-                        className="w-full h-full z-0"
-                        zoomControl={false}
-                    >
-                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        <Polyline positions={track} color="#3b82f6" weight={4} dashArray="5, 10" />
-                        <Marker position={track[track.length - 1]}>
-                            <Popup>Estás aquí</Popup>
-                        </Marker>
-                    </MapContainer>
+            {/* Lista Scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 pl-1 flex items-center gap-2">
+                    <MapIcon className="w-4 h-4 text-emerald-500" /> Aves Comunes en la zona
+                </h3>
+
+                {avesRadar.length === 0 ? (
+                    <div className="text-center py-10 bg-white rounded-xl border border-gray-200 border-dashed">
+                        <p className="text-sm text-gray-400 font-medium">No se detectaron aves frecuentes en esta zona.</p>
+                    </div>
                 ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-2">
-                        <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-                        <span className="text-xs font-bold">Obteniendo señal GPS...</span>
+                    <div className="space-y-3 pb-24">
+                        {avesRadar.map((ave, idx) => {
+                            const cantidad = listaAves[ave.cientifico] || 0;
+                            return (
+                                <div key={idx} className={`bg-white rounded-xl p-3 shadow-sm border transition-colors flex items-center justify-between ${cantidad > 0 ? 'border-emerald-300 bg-emerald-50/30' : 'border-gray-200'}`}>
+                                    <div className="flex-1 min-w-0 pr-4">
+                                        <p className="font-bold text-gray-800 text-sm truncate">{ave.comun}</p>
+                                        <p className="text-[10px] text-gray-500 italic truncate">{ave.cientifico}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        {cantidad > 0 && (
+                                            <button
+                                                onClick={() => ajustarConteo(ave.cientifico, -1)}
+                                                className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition"
+                                            >
+                                                <Minus className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                        <span className={`font-mono text-lg w-6 text-center ${cantidad > 0 ? 'font-black text-emerald-700' : 'text-gray-300 font-medium'}`}>
+                                            {cantidad}
+                                        </span>
+                                        <button
+                                            onClick={() => ajustarConteo(ave.cientifico, 1)}
+                                            className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center hover:bg-emerald-200 transition"
+                                        >
+                                            <Plus className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
 
-            {/* Selector de Tipo */}
-            <div className="flex p-2 bg-gray-100 gap-2 shrink-0 border-b border-gray-200">
-                {['desplazamiento', 'estacionario', 'incidental'].map(tipo => (
-                    <button
-                        key={tipo}
-                        onClick={() => setTipoObservacion(tipo)}
-                        className={`flex-1 py-2 text-[10px] font-bold rounded-lg capitalize transition-all ${tipoObservacion === tipo ? 'bg-white text-emerald-700 shadow-sm border border-emerald-200' : 'text-gray-500 hover:bg-gray-200'}`}
-                    >
-                        {tipo}
-                    </button>
-                ))}
-            </div>
-
-            {/* Lista de Conteo Ordenada (Estilo eBird) */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Aves Posibles (Probables al inicio)</h3>
-
-                {Object.entries(diccionarioAves)
-                    .sort(([cientificoA, comunA], [cientificoB, comunB]) => {
-                        // El radar de GBIF nos dice qué aves son comunes hoy. Las ponemos arriba.
-                        const radarNombres = avesRadar.map(a => a.cientifico.toLowerCase());
-                        const aEsProbable = radarNombres.includes(cientificoA);
-                        const bEsProbable = radarNombres.includes(cientificoB);
-
-                        if (aEsProbable && !bEsProbable) return -1;
-                        if (!aEsProbable && bEsProbable) return 1;
-                        return comunA.localeCompare(comunB); // Luego alfabéticamente
-                    })
-                    .map(([cientifico, comun]) => {
-                        const radarNombres = avesRadar.map(a => a.cientifico.toLowerCase());
-                        const esProbable = radarNombres.includes(cientifico);
-
-                        return (
-                            <div key={cientifico} className={`flex items-center justify-between py-3 border-b border-gray-200 px-3 rounded-xl mb-2 shadow-sm ${esProbable ? 'bg-emerald-50 border-l-4 border-emerald-500' : 'bg-white'}`}>
-                                <div className="flex items-center gap-3">
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-gray-800 text-sm leading-tight flex items-center gap-1">
-                                            {comun} {esProbable && <span className="w-2 h-2 bg-emerald-500 rounded-full" title="Probable hoy"></span>}
-                                        </span>
-                                        <span className="text-[10px] italic text-gray-500">{cientifico}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3 bg-gray-100 p-1 rounded-xl border border-gray-200 shrink-0">
-                                    <button onClick={() => ajustarConteo(cientifico, -1)} className="p-1.5 hover:bg-white rounded-lg text-gray-500 hover:text-red-500 transition-colors shadow-sm">
-                                        <Minus className="w-4 h-4" />
-                                    </button>
-                                    <span className="w-6 text-center font-black text-emerald-700 text-sm">
-                                        {listaAves[cientifico] || 0}
-                                    </span>
-                                    <button onClick={() => ajustarConteo(cientifico, 1)} className="p-1.5 bg-white rounded-lg text-gray-500 hover:text-emerald-600 transition-colors shadow-sm">
-                                        <Plus className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
+            {/* Botón Flotante para Terminar */}
+            <div className="absolute bottom-6 left-0 w-full px-6 z-20">
+                <button
+                    onClick={finalizarYEnviar}
+                    className="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white font-bold py-4 rounded-xl shadow-2xl transition-transform active:scale-95"
+                >
+                    <Square className="w-4 h-4 fill-current text-red-500" /> Finalizar Recorrido
+                </button>
             </div>
         </div>
     );
