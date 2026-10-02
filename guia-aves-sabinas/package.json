@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "browser-image-compression": "^2.0.2",
+    "country-state-city": "^3.2.1",
     "firebase": "^12.11.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.577.0",
@@ -19,6 +20,7 @@
     "react-dom": "^19.2.4",
     "react-leaflet": "^5.0.0",
     "react-pdf": "^10.4.1",
+    "react-qr-reader": "^3.0.0-beta-1",
     "react-router-dom": "^7.13.1",
     "xlsx": "^0.18.5"
   },

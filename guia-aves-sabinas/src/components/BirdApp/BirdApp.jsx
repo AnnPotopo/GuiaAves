@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from '../../firebase/config'; // <-- Importación correcta
-import { Mic, Library, Square, AlertCircle, Loader2, Award, X, Check, MapPin, Search, Volume2, Info, Calendar, Navigation, Edit3, Activity, Radar, Map, ClipboardList, Speaker } from 'lucide-react';
+import { db, auth } from '../../firebase/config';
+import { Mic, Library, Square, AlertCircle, Loader2, Award, X, Check, MapPin, Search, Volume2, Info, Calendar, Navigation, Edit3, Activity, Radar, Map, ClipboardList, Speaker, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Achievements from './Achievements';
 import MapExplore from './MapExplore';
@@ -345,232 +345,240 @@ export default function BirdApp() {
 
     return (
         <div className="h-full bg-gray-50 flex flex-col font-sans text-gray-800 overflow-hidden relative">
-            <header className="bg-white p-4 flex justify-between items-center z-10 shrink-0 border-b border-gray-200 shadow-sm">
+
+            {/* HEADER ESTILO EDITORIAL */}
+            <header className="bg-white p-5 flex justify-between items-center z-10 shrink-0 border-b border-gray-100 shadow-sm">
                 <div className="flex flex-col">
-                    <h1 className="text-lg font-extrabold text-emerald-700 tracking-tight">BirdSound ID</h1>
+                    <h1 className="text-xl font-serif font-black text-slate-800 tracking-tight">Guía de Aves</h1>
                     <button
                         onClick={() => { setTempLocation(ubicacion); setShowLocationModal(true); }}
-                        className="flex items-center gap-1 text-xs text-gray-500 font-medium hover:text-emerald-600 transition"
+                        className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold hover:text-emerald-700 transition mt-1"
                     >
-                        <MapPin className="w-3 h-3" />
-                        <span className="truncate max-w-[180px]">{ubicacion}</span>
-                        <Edit3 className="w-3 h-3 opacity-50" />
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span className="truncate max-w-[200px] border-b border-emerald-200">{ubicacion}</span>
                     </button>
                 </div>
-                <button onClick={() => { if (isRecording) detenerGrabacion(); navigate('/'); }} className="text-gray-400 hover:text-gray-700 bg-gray-100 p-2 rounded-full transition">
+                <button onClick={() => { if (isRecording) detenerGrabacion(); navigate('/'); }} className="text-gray-400 hover:text-slate-800 bg-gray-50 hover:bg-gray-100 p-2.5 rounded-full transition">
                     <X className="w-5 h-5" />
                 </button>
             </header>
-            <div className="flex-1 overflow-y-auto pb-24 relative flex flex-col">
+
+            <div className="flex-1 overflow-y-auto pb-24 relative flex flex-col custom-scrollbar">
+
+                {/* PESTAÑA IDENTIFICADOR (Microfono e IA) */}
                 {activeTab === 'identify' && (
                     <div className="flex flex-col items-center justify-start h-full p-6">
-                        <div className="mt-4 mb-8 flex flex-col items-center justify-center w-full">
-                            <div className="relative flex items-center justify-center mb-4">
-                                {isRecording && <div className="absolute w-40 h-40 bg-red-100 rounded-full animate-ping"></div>}
+                        <div className="mt-8 mb-10 flex flex-col items-center justify-center w-full">
+                            <div className="relative flex items-center justify-center mb-6">
+                                {isRecording && <div className="absolute w-44 h-44 bg-red-100/50 rounded-full animate-ping"></div>}
                                 <button
                                     onClick={isRecording ? detenerGrabacion : iniciarGrabacion}
                                     disabled={isProcessing}
-                                    className={`relative z-10 w-28 h-28 rounded-full flex flex-col items-center justify-center shadow-lg transition-all duration-300 ${isRecording ? 'bg-red-50 text-red-600 border border-red-200' : isProcessing ? 'bg-orange-50 text-orange-500 border border-orange-200' : 'bg-white text-emerald-600 hover:bg-emerald-50 border border-emerald-100'}`}
+                                    className={`relative z-10 w-32 h-32 rounded-full flex flex-col items-center justify-center shadow-xl transition-all duration-300 ${isRecording ? 'bg-red-600 text-white shadow-red-200' : isProcessing ? 'bg-amber-500 text-white shadow-amber-200' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300 hover:scale-105'}`}
                                 >
-                                    {isProcessing ? <Loader2 className="w-10 h-10 animate-spin mb-1" /> :
-                                        isRecording ? <Square className="w-8 h-8 mb-1 fill-current" /> :
-                                            <Mic className="w-10 h-10 mb-1" />}
-                                    <span className="font-bold text-[10px] uppercase tracking-wider">
-                                        {isProcessing ? 'Analizando' : isRecording ? 'Detener' : 'Escuchar'}
+                                    {isProcessing ? <Loader2 className="w-10 h-10 animate-spin mb-2" /> :
+                                        isRecording ? <Square className="w-10 h-10 mb-2 fill-current" /> :
+                                            <Mic className="w-12 h-12 mb-2" />}
+                                    <span className="font-bold text-[11px] uppercase tracking-widest">
+                                        {isProcessing ? 'Analizando' : isRecording ? 'Detener' : 'Identificar'}
                                     </span>
                                 </button>
                             </div>
                             <div className={`transition-opacity duration-300 ${isRecording ? 'opacity-100' : 'opacity-0'}`}>
-                                <canvas ref={canvasRef} width="200" height="40" className="rounded-lg"></canvas>
-                                <p className="text-[10px] text-gray-400 font-bold text-center mt-1 uppercase flex items-center justify-center gap-1">
-                                    <Activity className="w-3 h-3 text-emerald-500" /> Escuchando entorno
+                                <canvas ref={canvasRef} width="240" height="50" className="rounded-xl bg-white border border-gray-100 shadow-sm"></canvas>
+                                <p className="text-[10px] text-emerald-600 font-bold text-center mt-2 uppercase flex items-center justify-center gap-1.5 tracking-wider">
+                                    <Activity className="w-3.5 h-3.5" /> Escuchando entorno
                                 </p>
                             </div>
                         </div>
+
                         {sugerenciasIA ? (
-                            <div className="w-full max-w-lg animate-in slide-in-from-bottom-4 duration-300">
+                            <div className="w-full max-w-2xl animate-in slide-in-from-bottom-4 duration-500">
                                 {sugerenciasIA.libro.length > 0 && (
                                     <>
-                                        <h3 className="text-emerald-600 font-bold text-[11px] uppercase tracking-widest mb-3 px-1">Registradas en tu libro</h3>
+                                        <h3 className="text-slate-800 font-black text-sm uppercase tracking-widest mb-4 px-2 border-b border-gray-200 pb-2">Especies en la Guía</h3>
                                         {sugerenciasIA.libro.map(ave => (
-                                            <div key={ave.id} className="bg-white rounded-xl p-3 mb-4 shadow-sm border border-emerald-200 flex items-center gap-4 transition-all hover:shadow-md">
-                                                <div className="relative w-16 h-16 rounded-lg bg-cover bg-center border border-gray-100 shrink-0" style={{ backgroundImage: `url(${ave.imagenUrl})` }}>
+                                            <div key={ave.id} className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-100 flex items-center gap-5 transition-all hover:shadow-md group">
+                                                <div className="relative w-20 h-20 rounded-xl bg-cover bg-center shrink-0 shadow-inner overflow-hidden" style={{ backgroundImage: `url(${ave.imagenUrl})` }}>
                                                     {ave.confianzaIA && (
-                                                        <div className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10">
-                                                            {ave.confianzaIA}%
+                                                        <div className="absolute top-0 left-0 bg-emerald-600 text-white text-[10px] font-black px-2 py-1 rounded-br-lg shadow-sm z-10">
+                                                            {ave.confianzaIA}% Match
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <h4 className="font-bold text-gray-800 text-sm truncate">{ave.nombreComun}</h4>
-                                                    <p className="text-xs text-gray-500 italic truncate">{ave.nombreCientifico}</p>
+                                                    <h4 className="font-serif font-bold text-slate-900 text-lg truncate group-hover:text-emerald-700 transition-colors">{ave.nombreComun}</h4>
+                                                    <p className="text-sm text-gray-500 italic font-light truncate">{ave.nombreCientifico}</p>
                                                 </div>
                                                 <button
                                                     onClick={() => confirmarAvistamiento(ave.id)}
-                                                    className="bg-emerald-100 hover:bg-emerald-500 hover:text-white text-emerald-700 p-2.5 rounded-lg transition-colors shrink-0 shadow-sm"
+                                                    className="bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 p-3 rounded-xl transition-all shrink-0 shadow-sm"
+                                                    title="Confirmar Avistamiento"
                                                 >
-                                                    <Check className="w-5 h-5 stroke-[2.5]" />
+                                                    <Check className="w-6 h-6 stroke-[2.5]" />
                                                 </button>
                                             </div>
                                         ))}
                                     </>
                                 )}
                                 {sugerenciasIA.extras.length > 0 && (
-                                    <div className="mt-6">
-                                        <h3 className="text-gray-400 font-bold text-[11px] uppercase tracking-widest mb-3 px-1">Detecciones Probables (Fuera del libro)</h3>
+                                    <div className="mt-8">
+                                        <h3 className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-4 px-2">Posibles Coincidencias (Fuera de la guía)</h3>
                                         {sugerenciasIA.extras.map((extra, idx) => (
-                                            <div key={idx} className="bg-white rounded-xl p-3 mb-3 shadow-sm border border-gray-200 flex items-center gap-4 opacity-90 border-l-4 border-l-blue-400">
-                                                <div className="w-14 h-14 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100 relative">
-                                                    <Info className="w-6 h-6 text-blue-400" />
-                                                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10">
-                                                        {extra.confianza}%
-                                                    </div>
+                                            <div key={idx} className="bg-slate-50 rounded-2xl p-4 mb-3 border border-slate-200 flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shrink-0 border border-slate-200 shadow-sm relative">
+                                                    <Info className="w-5 h-5 text-slate-400" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <h4 className="font-bold text-gray-800 text-sm truncate">{extra.comun}</h4>
+                                                    <h4 className="font-bold text-slate-800 text-sm truncate">{extra.comun}</h4>
                                                     <p className="text-xs text-gray-500 italic truncate">{extra.cientifico}</p>
-                                                    <p className="text-[9px] text-blue-500 font-semibold mt-1">Especie no incluida en la enciclopedia local.</p>
                                                 </div>
+                                                <span className="bg-slate-200 text-slate-600 text-[10px] font-black px-2 py-1 rounded-md">{extra.confianza}%</span>
                                             </div>
                                         ))}
                                     </div>
                                 )}
                                 {sugerenciasIA.libro.length === 0 && sugerenciasIA.extras.length === 0 && (
-                                    <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-200 border-dashed mt-4">
-                                        <AlertCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-gray-600 text-sm font-semibold">No detectamos aves claramente. Intenta acercarte un poco más.</p>
+                                    <div className="bg-white rounded-3xl p-10 text-center shadow-sm border border-gray-200 mt-4">
+                                        <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                        <p className="text-gray-500 text-base font-medium">No logramos identificar ninguna especie con claridad. Intenta grabar más cerca.</p>
                                     </div>
                                 )}
                             </div>
                         ) : (
-                            <div className="w-full max-w-lg mt-4 border-t border-gray-200 pt-6">
-                                <h3 className="text-gray-600 font-bold text-[11px] uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
-                                    <Radar className="w-4 h-4 text-emerald-500" /> Radar de Aves en tu zona hoy
-                                </h3>
+                            <div className="w-full max-w-4xl mt-8">
+                                <div className="flex items-center justify-between mb-6 px-2">
+                                    <h3 className="text-slate-800 font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                                        <Radar className="w-5 h-5 text-emerald-600" /> Radar Regional
+                                    </h3>
+                                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-1 rounded-md">Hoy</span>
+                                </div>
+
                                 {loadingRadar ? (
-                                    <div className="flex items-center justify-center py-6 text-gray-400 gap-2 text-sm">
-                                        <Loader2 className="animate-spin w-4 h-4" /> Escaneando área...
+                                    <div className="flex items-center justify-center py-12 text-gray-400 gap-3 text-sm font-medium">
+                                        <Loader2 className="animate-spin w-5 h-5" /> Analizando avistamientos locales...
                                     </div>
                                 ) : avesRadar.length > 0 ? (
-                                    <div className="flex overflow-x-auto gap-3 pb-4 custom-scrollbar snap-x">
+                                    <div className="flex overflow-x-auto gap-4 pb-6 custom-scrollbar snap-x px-2">
                                         {avesRadar.map((ave, i) => (
-                                            <div key={i} className="snap-start bg-white border border-gray-200 rounded-xl p-3 shrink-0 w-40 shadow-sm flex flex-col items-center text-center">
-                                                <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center mb-2">
-                                                    <MapPin className="w-5 h-5 text-emerald-500" />
+                                            <div key={i} className="snap-start bg-white border border-gray-100 rounded-2xl p-5 shrink-0 w-48 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center text-center">
+                                                <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100">
+                                                    <MapPin className="w-6 h-6 text-slate-400" />
                                                 </div>
-                                                <p className="text-xs font-bold text-gray-800 line-clamp-2 leading-tight">{ave.comun}</p>
-                                                <p className="text-[9px] text-gray-500 italic mt-1 truncate w-full">{ave.cientifico}</p>
+                                                <p className="text-sm font-serif font-bold text-slate-800 line-clamp-2 leading-snug">{ave.comun}</p>
+                                                <p className="text-[10px] text-gray-500 italic mt-2 truncate w-full font-light">{ave.cientifico}</p>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-xs text-gray-400 text-center italic">No se encontraron reportes recientes cerca de ti.</p>
+                                    <p className="text-sm text-gray-400 text-center italic py-8 bg-white rounded-2xl border border-gray-100">No hay reportes de radar en esta zona en las últimas horas.</p>
                                 )}
                             </div>
                         )}
+
                         {showConfirmationAnim && (
-                            <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center animate-in fade-in backdrop-blur-sm">
+                            <div className="fixed inset-0 bg-white/95 z-[100] flex items-center justify-center animate-in fade-in zoom-in-95 backdrop-blur-sm">
                                 <div className="text-center">
-                                    <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-                                        <Check className="w-10 h-10 text-emerald-600 stroke-[3]" />
+                                    <div className="bg-emerald-600 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-emerald-200">
+                                        <Check className="w-12 h-12 text-white stroke-[3]" />
                                     </div>
-                                    <p className="text-xl font-bold text-gray-800">¡Confirmado!</p>
-                                    <p className="text-gray-500 text-sm">Añadido a tu colección personal.</p>
+                                    <p className="text-3xl font-serif font-black text-slate-900 mb-2">¡Registrado!</p>
+                                    <p className="text-gray-500 text-base font-medium">Especie añadida a tu libro de vida.</p>
                                 </div>
                             </div>
                         )}
                     </div>
                 )}
-                {activeTab === 'explore' && (
-                    <MapExplore db={db} user={user} />
-                )}
-                {activeTab === 'lists' && (
-                    <BirdChecklist
-                        db={db}
-                        user={user}
-                        ubicacion={ubicacion}
-                        avesRadar={avesRadar}
-                    />
-                )}
-                {/* AQUÍ RENDERIZAMOS EL NUEVO COMPONENTE BIRD SOUND BOX */}
-                {activeTab === 'soundbox' && (
-                    <BirdSoundBox
-                        db={db}
-                        user={user}
-                    />
-                )}
+
+                {/* PESTAÑAS SECUNDARIAS */}
+                {activeTab === 'explore' && <MapExplore db={db} user={user} />}
+                {activeTab === 'lists' && <BirdChecklist db={db} user={user} ubicacion={ubicacion} avesRadar={avesRadar} />}
+                {activeTab === 'soundbox' && <BirdSoundBox db={db} user={user} />}
+
+                {/* PESTAÑA MI LIBRO (CATÁLOGO ESTILO AUDUBON) */}
                 {activeTab === 'collection' && (
-                    <div className="p-4 md:p-6 bg-white min-h-full flex flex-col">
-                        <div className="flex bg-gray-100 p-1 rounded-xl mb-6 shrink-0">
+                    <div className="p-4 md:p-8 bg-gray-50 min-h-full flex flex-col max-w-7xl mx-auto w-full">
+                        <div className="flex bg-white p-1.5 rounded-xl mb-8 shrink-0 shadow-sm border border-gray-100 max-w-md mx-auto w-full">
                             <button
                                 onClick={() => setSubTab('catalog')}
-                                className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${subTab === 'catalog' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${subTab === 'catalog' ? 'bg-slate-900 text-white shadow-md' : 'text-gray-500 hover:text-slate-900 hover:bg-gray-50'}`}
                             >
-                                Catálogo
+                                Guía Visual
                             </button>
                             <button
                                 onClick={() => setSubTab('achievements')}
-                                className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${subTab === 'achievements' ? 'bg-white text-amber-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${subTab === 'achievements' ? 'bg-slate-900 text-white shadow-md' : 'text-gray-500 hover:text-slate-900 hover:bg-gray-50'}`}
                             >
-                                Mis Logros
+                                Logros
                             </button>
                         </div>
+
                         {subTab === 'catalog' ? (
-                            <div className="animate-in fade-in duration-300">
-                                <div className="mb-6">
-                                    <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
+                            <div className="animate-in fade-in duration-500">
+                                <div className="mb-8">
+                                    <div className="flex overflow-x-auto gap-3 pb-3 custom-scrollbar">
                                         {['todas', 'hoy', 'descubiertas', 'faltantes'].map(f => (
                                             <button
                                                 key={f}
                                                 onClick={() => setFiltro(f)}
-                                                className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors border shadow-sm ${filtro === f ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                                                className={`px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${filtro === f ? 'bg-emerald-700 text-white border-emerald-700 shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-slate-900'}`}
                                             >
-                                                {f === 'todas' ? 'Todas' : f === 'hoy' ? 'Vistas Hoy' : f === 'descubiertas' ? 'Descubiertas' : 'Faltantes'}
+                                                {f === 'todas' ? 'Catálogo Completo' : f === 'hoy' ? 'Vistas Hoy' : f === 'descubiertas' ? 'Mis Descubrimientos' : 'Por Descubrir'}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
+
                                 {Object.keys(avesPorOrden).length === 0 ? (
-                                    <div className="text-center py-12 text-gray-400">
-                                        <Search className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                                        <p>No hay aves que coincidan con este filtro.</p>
+                                    <div className="text-center py-20 text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                                        <Search className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                                        <p className="text-lg font-serif">No hay especies en esta categoría.</p>
                                     </div>
                                 ) : Object.entries(avesPorOrden).map(([orden, avesDelOrden]) => (
-                                    <div key={orden} className="mb-8">
-                                        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2 mb-4">
-                                            {orden} <span className="text-gray-300 normal-case font-normal ml-1">({avesDelOrden.length})</span>
+                                    <div key={orden} className="mb-12">
+                                        <h3 className="text-2xl font-serif font-bold text-slate-800 border-b-2 border-slate-200 pb-3 mb-6 flex items-baseline gap-3">
+                                            {orden}
+                                            <span className="text-sm font-sans font-medium text-gray-400">{avesDelOrden.length} especies</span>
                                         </h3>
-                                        <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x">
+
+                                        {/* GRID ESTILO AUDUBON (Tarjetas Cuadradas/Verticales) */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                                             {avesDelOrden.map(ave => {
                                                 const { vistas } = getDatosAvistamiento(ave.id);
                                                 const desbloqueada = vistas > 0;
-                                                let borde = '';
-                                                if (!desbloqueada) {
-                                                    borde = 'border-gray-500 opacity-80 filter grayscale brightness-[0.4] bg-gray-300 cursor-default';
-                                                } else if (vistas < 20) {
-                                                    borde = 'border-[#cd7f32] border-4 cursor-pointer hover:scale-105 transition-transform shadow-md';
-                                                } else if (vistas < 50) {
-                                                    borde = 'border-[#a0a0a0] border-4 cursor-pointer hover:scale-105 transition-transform shadow-md';
-                                                } else if (vistas < 100) {
-                                                    borde = 'border-[#f1c40f] border-4 cursor-pointer hover:scale-105 transition-transform shadow-md';
-                                                } else {
-                                                    borde = 'border-[#95a5a6] border-4 cursor-pointer hover:scale-105 transition-transform shadow-md';
-                                                }
+
                                                 return (
-                                                    <div key={ave.id} className="snap-start flex flex-col items-center w-24 shrink-0">
-                                                        <div
-                                                            className={`w-20 h-20 rounded-full bg-cover bg-center relative ${borde}`}
-                                                            style={{ backgroundImage: `url('${ave.imagenUrl || ''}')` }}
-                                                            onClick={() => { if (desbloqueada) setSelectedAve(ave); }}
-                                                        />
-                                                        <div className='flex flex-col items-center mt-2 px-1 text-center'>
-                                                            <p className={`text-[10px] font-bold leading-tight line-clamp-2 ${desbloqueada ? 'text-gray-800' : 'text-gray-400'}`}>
-                                                                {desbloqueada ? ave.nombreComun : 'Desconocida'}
-                                                            </p>
-                                                            {desbloqueada && (
-                                                                <p className="text-[9px] mt-0.5 flex items-center justify-center gap-1 font-semibold text-emerald-600">
-                                                                    <Award className='w-3 h-3' /> {vistas}
+                                                    <div
+                                                        key={ave.id}
+                                                        onClick={() => { if (desbloqueada) setSelectedAve(ave); }}
+                                                        className={`flex flex-col bg-white rounded-2xl overflow-hidden border transition-all duration-300 ${desbloqueada ? 'cursor-pointer border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 group' : 'border-gray-100 opacity-60 grayscale filter'}`}
+                                                    >
+                                                        <div className="w-full aspect-square bg-slate-100 relative overflow-hidden">
+                                                            <img
+                                                                src={ave.imagenUrl || 'https://via.placeholder.com/300'}
+                                                                alt={ave.nombreComun}
+                                                                className={`w-full h-full object-cover transition-transform duration-700 ${desbloqueada ? 'group-hover:scale-105' : ''}`}
+                                                            />
+                                                            {desbloqueada && vistas >= 20 && (
+                                                                <div className="absolute top-2 right-2 bg-amber-500 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-sm">
+                                                                    Experto
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="p-4 flex flex-col flex-1 justify-between">
+                                                            <div>
+                                                                <h4 className={`font-serif font-bold text-base leading-tight mb-1 ${desbloqueada ? 'text-slate-900 group-hover:text-emerald-700' : 'text-gray-500'}`}>
+                                                                    {desbloqueada ? ave.nombreComun : 'Especie Bloqueada'}
+                                                                </h4>
+                                                                <p className="text-[10px] font-light italic text-gray-500 line-clamp-1">
+                                                                    {desbloqueada ? ave.nombreCientifico : '???? ?????'}
                                                                 </p>
+                                                            </div>
+                                                            {desbloqueada && (
+                                                                <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-3">
+                                                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Avistamientos</span>
+                                                                    <span className="text-xs font-black text-emerald-600 flex items-center gap-1"><Award className="w-3.5 h-3.5" /> {vistas}</span>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
@@ -586,122 +594,196 @@ export default function BirdApp() {
                     </div>
                 )}
             </div>
+
             {/* --- MODAL DE UBICACIÓN --- */}
             {showLocationModal && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 animate-in fade-in">
-                    <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95">
-                        <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-800">Actualizar Ubicación</h3>
-                            <button onClick={() => setShowLocationModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
+                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-black text-slate-800">Actualizar Región</h3>
+                            <button onClick={() => setShowLocationModal(false)} className="text-gray-400 hover:text-slate-900 transition-colors"><X className="w-5 h-5" /></button>
                         </div>
-                        <div className="p-5">
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Lugar actual</label>
+                        <div className="p-6">
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 block">Lugar actual</label>
                             <input
                                 type="text"
                                 value={tempLocation}
                                 onChange={(e) => setTempLocation(e.target.value)}
-                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-emerald-500 mb-4"
+                                className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 mb-4 transition-all"
                                 placeholder="Ej. Parque La Turbina..."
                             />
                             <button
                                 onClick={obtenerGPS}
-                                className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-3 rounded-lg transition border border-blue-200 mb-2"
+                                className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl transition-colors mb-2"
                             >
                                 <Navigation className="w-4 h-4" /> Usar mi GPS
                             </button>
                             <button
                                 onClick={() => { setUbicacion(tempLocation); setShowLocationModal(false); }}
-                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition shadow-md shadow-emerald-200 mt-4"
+                                className="w-full bg-slate-900 hover:bg-black text-white font-bold py-3 rounded-xl transition-colors mt-4 shadow-lg"
                             >
-                                Guardar Ubicación
+                                Confirmar Ubicación
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-            {/* --- FICHA DEL AVE --- */}
+
+            {/* --- FICHA DEL AVE (DISEÑO EDITORIAL TIPO AUDUBON A PANTALLA COMPLETA) --- */}
             {selectedAve && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-gray-900/60 backdrop-blur-sm p-0 sm:p-6 animate-in fade-in duration-200">
-                    <div className="bg-white w-full h-[90vh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-2xl rounded-t-3xl flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8">
-                        <button onClick={() => setSelectedAve(null)} className="absolute top-4 right-4 z-10 bg-black/40 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-md transition">
-                            <X className="w-5 h-5" />
-                        </button>
-                        <div
-                            className="w-full h-64 sm:h-72 bg-cover bg-center shrink-0 relative"
-                            style={{ backgroundImage: `url('${selectedAve.imagenUrl || ''}')` }}
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
+                <div className="fixed inset-0 z-[100] bg-white overflow-y-auto animate-in fade-in duration-300 custom-scrollbar">
+
+                    {/* Botón Flotante para Cerrar */}
+                    <button
+                        onClick={() => setSelectedAve(null)}
+                        className="fixed top-6 right-6 z-50 bg-white/20 hover:bg-white/40 backdrop-blur-md border border-white/30 text-white p-3 rounded-full transition-all shadow-lg group"
+                    >
+                        <X className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                    </button>
+
+                    {/* HERO SECTION GIGANTE */}
+                    <div className="relative w-full h-[60vh] md:h-[70vh] bg-slate-900">
+                        <img
+                            src={selectedAve.imagenUrl || 'https://via.placeholder.com/1200'}
+                            alt={selectedAve.nombreComun}
+                            className="w-full h-full object-cover opacity-90"
+                        />
+                        {/* Degradado para que el texto sea legible */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
+
+                        {/* Títulos sobre la imagen */}
+                        <div className="absolute bottom-0 left-0 w-full px-6 md:px-16 pb-12 pt-32 text-white max-w-7xl mx-auto">
+                            <p className="text-emerald-400 font-bold tracking-widest uppercase text-xs mb-3 flex items-center gap-2">
+                                <Award className="w-4 h-4" /> Guía Oficial de Aves
+                            </p>
+                            <h1 className="text-5xl md:text-7xl font-serif font-black text-white leading-none mb-2 drop-shadow-lg">
+                                {selectedAve.nombreComun}
+                            </h1>
+                            <p className="text-xl md:text-3xl font-light italic text-gray-300 drop-shadow-md">
+                                {selectedAve.nombreCientifico}
+                            </p>
                         </div>
-                        <div className="p-6 overflow-y-auto flex-1">
-                            <div className="mb-6">
-                                <h2 className="text-3xl font-extrabold text-gray-900 leading-tight mb-1">{selectedAve.nombreComun}</h2>
-                                <p className="text-emerald-600 font-medium italic text-lg">{selectedAve.nombreCientifico}</p>
-                            </div>
-                            <div className="flex gap-4 mb-6">
-                                <div className="bg-emerald-50 rounded-xl p-3 flex-1 border border-emerald-100">
-                                    <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-0.5">Orden</p>
-                                    <p className="text-sm text-gray-800 font-semibold">{selectedAve.orden || 'N/A'}</p>
-                                </div>
-                                <div className="bg-blue-50 rounded-xl p-3 flex-1 border border-blue-100">
-                                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-0.5">Familia</p>
-                                    <p className="text-sm text-gray-800 font-semibold">{selectedAve.familia || 'N/A'}</p>
-                                </div>
-                            </div>
-                            <div className="space-y-6 mb-6">
-                                {selectedAve.habitat && (
-                                    <div>
-                                        <h4 className="flex items-center gap-1.5 text-gray-800 font-bold mb-1.5"><MapPin className="w-4 h-4 text-red-500" /> Hábitat</h4>
-                                        <p className="text-sm text-gray-600 leading-relaxed">{selectedAve.habitat}</p>
+                    </div>
+
+                    {/* CONTENIDO ESTILO ARTÍCULO */}
+                    <div className="max-w-6xl mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-3 gap-16 relative">
+
+                        {/* Columna Principal (Audio y Textos) */}
+                        <div className="lg:col-span-2 space-y-12">
+
+                            {/* REPRODUCTOR DE AUDIO ELEGANTE */}
+                            <div className="bg-slate-50 rounded-3xl p-8 border-l-4 border-emerald-600 shadow-sm">
+                                <h3 className="font-serif font-bold text-2xl text-slate-800 mb-4 flex items-center gap-3">
+                                    <Volume2 className="w-6 h-6 text-emerald-600" /> Canto y Llamados
+                                </h3>
+                                {buscandoAudio ? (
+                                    <div className="flex items-center gap-3 text-slate-500 font-medium py-4">
+                                        <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                                        Sincronizando con base de datos global...
                                     </div>
-                                )}
-                                {selectedAve.descripcion && (
-                                    <div>
-                                        <h4 className="flex items-center gap-1.5 text-gray-800 font-bold mb-1.5"><Info className="w-4 h-4 text-blue-500" /> Descripción</h4>
-                                        <p className="text-sm text-gray-600 leading-relaxed">{selectedAve.descripcion}</p>
+                                ) : audioCanto ? (
+                                    <div className="mt-4">
+                                        <audio controls className="w-full h-12 outline-none rounded-lg custom-audio">
+                                            <source src={audioCanto} type="audio/mpeg" />
+                                        </audio>
+                                        <p className="text-[10px] text-gray-400 mt-3 font-medium uppercase tracking-widest text-right">Grabación oficial via Xeno-canto</p>
                                     </div>
+                                ) : (
+                                    <p className="text-sm text-gray-500 italic py-2">No existen grabaciones públicas verificadas para esta especie.</p>
                                 )}
+                            </div>
+
+                            {/* SECCIONES DE TEXTO (Descripción y Hábitat) */}
+                            {selectedAve.descripcion && (
+                                <section>
+                                    <h3 className="text-3xl font-serif font-bold text-slate-900 mb-6 border-b border-gray-200 pb-4">Acerca del Ave</h3>
+                                    <p className="text-lg text-gray-700 leading-relaxed font-light whitespace-pre-line first-letter:text-5xl first-letter:font-serif first-letter:font-black first-letter:text-emerald-700 first-letter:mr-2 first-letter:float-left">
+                                        {selectedAve.descripcion}
+                                    </p>
+                                </section>
+                            )}
+
+                            {selectedAve.habitat && (
+                                <section>
+                                    <h3 className="text-2xl font-serif font-bold text-slate-900 mb-4">Hábitat y Comportamiento</h3>
+                                    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+                                        <p className="text-base text-gray-700 leading-relaxed flex items-start gap-4">
+                                            <MapPin className="w-6 h-6 text-emerald-600 shrink-0 mt-1" />
+                                            <span>{selectedAve.habitat}</span>
+                                        </p>
+                                    </div>
+                                </section>
+                            )}
+                        </div>
+
+                        {/* Columna Lateral (Sidebar de Datos Rápidos) */}
+                        <div className="lg:col-span-1 space-y-8">
+
+                            <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-xl">
+                                <h3 className="text-lg font-black uppercase tracking-widest text-emerald-400 mb-6">Taxonomía</h3>
+
+                                <div className="space-y-6">
+                                    <div className="border-b border-slate-700 pb-4">
+                                        <p className="text-xs text-slate-400 font-bold uppercase mb-1">Orden</p>
+                                        <p className="text-lg font-serif font-bold">{selectedAve.orden || 'No clasificado'}</p>
+                                    </div>
+                                    <div className="border-b border-slate-700 pb-4">
+                                        <p className="text-xs text-slate-400 font-bold uppercase mb-1">Familia</p>
+                                        <p className="text-lg font-serif font-bold">{selectedAve.familia || 'No clasificado'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-400 font-bold uppercase mb-1">Especie</p>
+                                        <p className="text-base italic font-light">{selectedAve.nombreCientifico}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Mis Estadísticas */}
+                            <div className="bg-emerald-50 rounded-3xl p-8 border border-emerald-100">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-emerald-800 mb-6 flex items-center gap-2">
+                                    <Activity className="w-5 h-5" /> Mis Estadísticas
+                                </h3>
+
+                                <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm text-center">
+                                    <p className="text-4xl font-black text-emerald-600 mb-1">{getDatosAvistamiento(selectedAve.id).vistas}</p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Avistamientos Registrados</p>
+                                </div>
+
                                 {getDatosAvistamiento(selectedAve.id).vistas > 0 && (
-                                    <div>
-                                        <h4 className="flex items-center gap-1.5 text-gray-800 font-bold mb-1.5"><Calendar className="w-4 h-4 text-orange-500" /> Último Avistamiento</h4>
-                                        <p className="text-sm text-gray-600 leading-relaxed">
-                                            {getDatosAvistamiento(selectedAve.id).fecha ? new Date(getDatosAvistamiento(selectedAve.id).fecha).toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Fecha no registrada'}
-                                            <span className="block text-xs mt-1 text-gray-400">📍 {getDatosAvistamiento(selectedAve.id).location || 'Sin ubicación'}</span>
+                                    <div className="text-sm text-slate-700 font-medium space-y-2 mt-6">
+                                        <p className="flex items-center gap-3">
+                                            <Calendar className="w-5 h-5 text-emerald-500" />
+                                            {new Date(getDatosAvistamiento(selectedAve.id).fecha).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                        </p>
+                                        <p className="flex items-center gap-3">
+                                            <MapPin className="w-5 h-5 text-emerald-500" />
+                                            {getDatosAvistamiento(selectedAve.id).location || 'Sin ubicación'}
                                         </p>
                                     </div>
                                 )}
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                <h4 className="flex items-center gap-1.5 text-gray-800 font-bold mb-3"><Volume2 className="w-4 h-4 text-indigo-500" /> Canto de la especie</h4>
-                                {buscandoAudio ? (
-                                    <p className="text-xs text-indigo-500 flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Buscando en la base mundial...</p>
-                                ) : audioCanto ? (
-                                    <audio controls className="w-full h-10 outline-none rounded">
-                                        <source src={audioCanto} type="audio/mpeg" />
-                                    </audio>
-                                ) : (
-                                    <p className="text-xs text-gray-500 italic">Audio no disponible en modo prueba.</p>
-                                )}
-                            </div>
+
                         </div>
                     </div>
                 </div>
             )}
-            {/* MENÚ INFERIOR ACTUALIZADO CON 5 BOTONES */}
-            <nav className="bg-white border-t border-gray-200 flex justify-between items-center pb-safe fixed bottom-0 w-full h-16 shrink-0 z-40 px-1 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                <button onClick={() => setActiveTab('identify')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'identify' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                    <Mic className={`w-5 h-5 ${activeTab === 'identify' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Identificar</span>
+
+            {/* MENÚ INFERIOR ESTILO MINIMALISTA */}
+            <nav className="bg-white border-t border-gray-100 flex justify-around items-center pb-safe fixed bottom-0 w-full h-[72px] shrink-0 z-40 px-2 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+                <button onClick={() => setActiveTab('identify')} className={`flex flex-col items-center justify-center w-16 h-full space-y-1.5 transition-all duration-300 ${activeTab === 'identify' ? 'text-emerald-600 -translate-y-1' : 'text-gray-400 hover:text-slate-800'}`}>
+                    <Mic className={`w-6 h-6 ${activeTab === 'identify' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold uppercase tracking-wider">Identificar</span>
                 </button>
-                <button onClick={() => setActiveTab('lists')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'lists' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                    <ClipboardList className={`w-5 h-5 ${activeTab === 'lists' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Listas</span>
+                <button onClick={() => setActiveTab('lists')} className={`flex flex-col items-center justify-center w-16 h-full space-y-1.5 transition-all duration-300 ${activeTab === 'lists' ? 'text-emerald-600 -translate-y-1' : 'text-gray-400 hover:text-slate-800'}`}>
+                    <ClipboardList className={`w-6 h-6 ${activeTab === 'lists' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold uppercase tracking-wider">Listas</span>
                 </button>
-                <button onClick={() => setActiveTab('explore')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'explore' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                    <Map className={`w-5 h-5 ${activeTab === 'explore' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Explorar</span>
+                <button onClick={() => setActiveTab('explore')} className={`flex flex-col items-center justify-center w-16 h-full space-y-1.5 transition-all duration-300 ${activeTab === 'explore' ? 'text-emerald-600 -translate-y-1' : 'text-gray-400 hover:text-slate-800'}`}>
+                    <Map className={`w-6 h-6 ${activeTab === 'explore' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold uppercase tracking-wider">Explorar</span>
                 </button>
-                <button onClick={() => setActiveTab('collection')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'collection' ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                    <Library className={`w-5 h-5 ${activeTab === 'collection' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">Mi Libro</span>
+                <button onClick={() => setActiveTab('collection')} className={`flex flex-col items-center justify-center w-16 h-full space-y-1.5 transition-all duration-300 ${activeTab === 'collection' ? 'text-emerald-600 -translate-y-1' : 'text-gray-400 hover:text-slate-800'}`}>
+                    <Library className={`w-6 h-6 ${activeTab === 'collection' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold uppercase tracking-wider">Mi Guía</span>
                 </button>
-                <button onClick={() => setActiveTab('soundbox')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition duration-200 ${activeTab === 'soundbox' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                    <Speaker className={`w-5 h-5 ${activeTab === 'soundbox' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold">SoundBox</span>
+                <button onClick={() => setActiveTab('soundbox')} className={`flex flex-col items-center justify-center w-16 h-full space-y-1.5 transition-all duration-300 ${activeTab === 'soundbox' ? 'text-emerald-600 -translate-y-1' : 'text-gray-400 hover:text-slate-800'}`}>
+                    <Speaker className={`w-6 h-6 ${activeTab === 'soundbox' ? 'stroke-[2.5]' : 'stroke-2'}`} /><span className="text-[9px] font-bold uppercase tracking-wider">Sonidos</span>
                 </button>
             </nav>
         </div>

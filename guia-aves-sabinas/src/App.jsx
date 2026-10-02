@@ -1,34 +1,35 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+// Importación de Componentes
 import Layout from './components/Layout/Layout';
 import Home from './components/Home/Home';
 import BirdApp from './components/BirdApp/BirdApp';
 import BookList from './components/Dashboard/BookList';
-import UserProfile from './components/Dashboard/UserProfile';
-import ModerationPanel from './components/Dashboard/ModerationPanel';
-import EditorLayout from './components/Editor/EditorLayout';
-import EditorDashboard from './components/Editor/EditorDashboard';
 import PDFViewer from './components/Editor/PDFViewer';
-import AdminDashboard from './components/BirdApp/AdminDashboard';
+import EditorDashboard from './components/Editor/EditorDashboard';
 import DatabaseManager from './components/Database/DatabaseManager';
-import 'leaflet/dist/leaflet.css';
+import ModerationPanel from './components/Dashboard/ModerationPanel';
+import UserProfile from './components/Dashboard/UserProfile';
+import RedeemCode from './components/Dashboard/RedeemCode'; // <-- NUEVO MÓDULO
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="birdapp" element={<BirdApp />} />
-          <Route path="libros" element={<BookList />} />
-          <Route path="creador-guias" element={<EditorDashboard />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="database" element={<DatabaseManager />} />
-          <Route path="moderacion" element={<ModerationPanel />} />
+        {/* Rutas con el Layout (Menú Lateral) */}
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/birdapp" element={<BirdApp />} />
+          <Route path="/libros" element={<BookList />} />
+          <Route path="/database" element={<DatabaseManager />} />
+          <Route path="/moderacion" element={<ModerationPanel />} />
+          <Route path="/perfil/:usuarioId" element={<UserProfile />} />
+          <Route path="/canjear" element={<RedeemCode />} /> {/* <-- NUEVA RUTA */}
         </Route>
 
-        <Route path="/perfil/:usuarioId" element={<UserProfile />} />
-        <Route path="/editor/:bookId" element={<EditorLayout />} />
+        {/* Rutas a Pantalla Completa (Sin Menú Lateral) */}
+        <Route path="/creador-guias" element={<EditorDashboard />} />
         <Route path="/visor/:bookId" element={<PDFViewer />} />
       </Routes>
     </BrowserRouter>
