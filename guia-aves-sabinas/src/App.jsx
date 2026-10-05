@@ -11,7 +11,8 @@ import EditorDashboard from './components/Editor/EditorDashboard';
 import DatabaseManager from './components/Database/DatabaseManager';
 import ModerationPanel from './components/Dashboard/ModerationPanel';
 import UserProfile from './components/Dashboard/UserProfile';
-import RedeemCode from './components/Dashboard/RedeemCode'; // <-- NUEVO MÓDULO
+import RedeemCode from './components/Dashboard/RedeemCode';
+import MisDispositivos from './components/Dashboard/MisDispositivos'; // <-- NUEVO MÓDULO
 
 export default function App() {
   return (
@@ -25,7 +26,8 @@ export default function App() {
           <Route path="/database" element={<DatabaseManager />} />
           <Route path="/moderacion" element={<ModerationPanel />} />
           <Route path="/perfil/:usuarioId" element={<UserProfile />} />
-          <Route path="/canjear" element={<RedeemCode />} /> {/* <-- NUEVA RUTA */}
+          <Route path="/canjear" element={<RedeemCode />} />
+          <Route path="/dispositivos" element={<MisDispositivos />} /> {/* <-- NUEVA RUTA */}
         </Route>
 
         {/* Rutas a Pantalla Completa (Sin Menú Lateral) */}

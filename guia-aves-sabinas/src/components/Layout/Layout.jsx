@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { BookOpen, Mic, Bird, LogOut, Loader2, BarChart3, Menu, X, Database, Library, ShieldAlert, QrCode } from 'lucide-react';
+import { BookOpen, Mic, Bird, LogOut, Loader2, BarChart3, Menu, X, Database, Library, ShieldAlert, QrCode, Smartphone } from 'lucide-react';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -80,10 +80,8 @@ export default function Layout() {
         { id: 'home', titulo: 'Inicio', icono: <Bird className="w-6 h-6 text-gray-500" />, color: 'bg-gray-50 hover:border-gray-300 text-gray-600', ruta: '/', adminOnly: false },
         { id: 'birdapp', titulo: 'Identificador', icono: <Mic className="w-6 h-6 text-emerald-600" />, color: 'bg-emerald-50 hover:border-emerald-300 text-emerald-600', ruta: '/birdapp', adminOnly: false },
         { id: 'libros', titulo: 'Biblioteca Digital', icono: <Library className="w-6 h-6 text-emerald-600" />, color: 'bg-emerald-50 hover:border-emerald-300 text-emerald-600', ruta: '/libros', adminOnly: false },
-
-        // <-- NUEVO MÓDULO AÑADIDO AQUÍ -->
         { id: 'canjear', titulo: 'Canjear Códigos', icono: <QrCode className="w-6 h-6 text-indigo-600" />, color: 'bg-indigo-50 hover:border-indigo-300 text-indigo-600', ruta: '/canjear', adminOnly: false },
-
+        { id: 'dispositivos', titulo: 'Mis Dispositivos', icono: <Smartphone className="w-6 h-6 text-teal-600" />, color: 'bg-teal-50 hover:border-teal-300 text-teal-600', ruta: '/dispositivos', adminOnly: false },
         { id: 'creador', titulo: 'Creador de Guías', icono: <BookOpen className="w-6 h-6 text-blue-600" />, color: 'bg-blue-50 hover:border-blue-300 text-blue-600', ruta: '/creador-guias', adminOnly: true },
         { id: 'dashboard', titulo: 'Centro de Comando', icono: <BarChart3 className="w-6 h-6 text-purple-600" />, color: 'bg-purple-50 hover:border-purple-300 text-purple-600', ruta: '/dashboard', adminOnly: true },
         { id: 'database', titulo: 'Base de Datos (iNat)', icono: <Database className="w-6 h-6 text-amber-600" />, color: 'bg-amber-50 hover:border-amber-300 text-amber-600', ruta: '/database', adminOnly: true },
